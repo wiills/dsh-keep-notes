@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, readFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -216,6 +216,25 @@ test('FolderSync loads an existing local board before writing the shared file', 
 
   const remote = JSON.parse(await readFile(path.join(shared, REMOTE_FILE), 'utf8'));
   assert.equal(remote.todos[0].text, 'existing local');
+});
+
+test('FolderSync refuses to overwrite an invalid shared board', async () => {
+  const root = await tempRoot();
+  const shared = path.join(root, 'shared');
+  await mkdir(shared);
+  const remoteFile = path.join(shared, REMOTE_FILE);
+  await writeFile(remoteFile, '{ not json', 'utf8');
+  const store = new BoardStore({ file: path.join(root, 'board.json') });
+  await store.initialize({ todos: [], notes: [] });
+  await store.addTodo({ text: 'local', date: null });
+  const sync = new FolderSync({ store, configFile: path.join(root, 'sync.json') });
+
+  const status = await sync.setFolder(shared);
+  assert.equal(status.state, 'idle');
+  const failed = await sync.tick();
+  assert.equal(failed.state, 'error');
+  assert.match(failed.lastError, /not valid JSON/);
+  assert.equal(await readFile(remoteFile, 'utf8'), '{ not json');
 });
 
 test('FolderSync rejects a missing or relative target folder', async () => {
