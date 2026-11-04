@@ -1,0 +1,58 @@
+{
+  "format": 1,
+  "title": {
+    "en": "wiills DSH plugins",
+    "zh": "wiills 的 DSH 插件"
+  },
+  "metadata": {
+    "categories": {
+      "productivity": {
+        "title": {
+          "en": "Productivity",
+          "zh": "效率"
+        }
+      }
+    }
+  },
+  "plugins": [
+    {
+      "name": "dsh-keep-notes",
+      "title": {
+        "en": "Notes & Todos",
+        "zh": "便签与待办"
+      },
+      "description": {
+        "en": "Keep-style notes, calendar todos and a GitHub-style activity heatmap in a sidebar panel.",
+        "zh": "Keep 风格便签、按日历排布的待办清单与 GitHub 风格活动热力图，独立占据一个左侧栏页面。"
+      },
+      "icon": "./icons/keep-notes.svg",
+      "author": "wiills",
+      "homepage": "https://github.com/wiills/dsh-keep-notes#readme",
+      "repository": {
+        "url": "https://github.com/wiills/dsh-keep-notes"
+      },
+      "metadata": {
+        "category": "productivity",
+        "keywords": [
+          "notes",
+          "todo",
+          "calendar",
+          "heatmap",
+          "keep"
+        ]
+      },
+      "versions": [
+        {
+          "version": "1.0.0",
+          "publishTimestamp": 1793770261,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {
+            "dsh": "^0.2.1-rc.5"
+          }
+        }
+      ]
+    }
+  ]
+}

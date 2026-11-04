@@ -1,0 +1,62 @@
+{
+  "name": "dsh-keep-notes",
+  "version": "1.0.0",
+  "description": "Keep-style notes, calendar todos and a GitHub-style activity heatmap in a DSH sidebar panel.",
+  "license": "MIT",
+  "author": "wiills <me@wiills.com>",
+  "homepage": "https://github.com/wiills/dsh-keep-notes#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wiills/dsh-keep-notes.git"
+  },
+  "bugs": {
+    "url": "https://github.com/wiills/dsh-keep-notes/issues"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "notes",
+    "todo",
+    "calendar",
+    "heatmap",
+    "keep"
+  ],
+  "engines": {
+    "dsh": "^0.2.1-rc.5"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "type": "module",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg"
+  ],
+  "scripts": {
+    "check": "node --check index.js && node --check client.js",
+    "validate:index": "node scripts/validate-index.mjs"
+  },
+  "devDependencies": {
+    "@deepseek-ai/dsh-plugin-market-index": "0.2.1-rc.5"
+  },
+  "dsh": {
+    "manifestVersion": 1,
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true
+    }
+  }
+}
