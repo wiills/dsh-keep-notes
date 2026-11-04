@@ -13,7 +13,7 @@ Keep 风格的便签、按日历排布的待办清单，以及 GitHub 风格的�
 - **两类便签**：日历便签跟随选中日期，全局便签常驻；最右侧还有一栏固定便签，随手记一笔。
 - **活动热力图**：GitHub 同款绿色梯度，16 周 × 7 天，带 0–4 图例。
 - **顶部迷你月历**：显示整月、今天与有待办的日期，点一下跳到那天。
-- **外观设置**：标题栏、待办区、便签区可分别设置背景图，遮罩强度可调。
+- **外观设置**：背景可选自动 / 黑 / 白（黑、白固定配色，不跟随系统主题）；标题栏、待办区、便签区可分别设置背景图，遮罩强度可调。
 - **主题与配色**：跟随 DSH 深色/浅色主题；便签提供黄、绿、蓝、紫、红五色（Microsoft To Do 色板）。
 - **中英文界面**：跟随 DSH 语言切换。
 
@@ -55,7 +55,7 @@ npm 版本发布后，也可以直接输入 `dsh-keep-notes@1.0.0`。
 - **完成待办**：点左侧圆圈；双击文字可以改名。
 - **新建便签**：点「+ 新建便签」；便签底部圆点切换颜色。
 - **固定便签**：最右栏，输入即自动保存。
-- **设置**：标题栏左下角的齿轮，可换背景图、调遮罩强度。
+- **设置**：齿轮在「7 天 / 月视图」右侧，可切换背景（自动 / 黑 / 白）、换背景图、调遮罩强度；点击空白处或按 Esc 关闭。
 
 ## 数据与隐私
 
@@ -100,7 +100,8 @@ Keep-style notes, calendar-based todos and a GitHub-style activity heatmap, rend
 - Todos laid out per calendar day: a 7-day view by default, expandable to a full month; today's column is wider and highlighted.
 - A global todo column pinned to the left, independent of the selected date.
 - Calendar notes follow the selected day, global notes stay put, and a fixed note rail sits on the far right.
-- GitHub-style 16 × 7 activity heatmap, a mini month calendar, and per-section background images.
+- Background mode auto / black / white (black and white ignore the app theme), plus per-section background images.
+- GitHub-style 16 × 7 activity heatmap and a mini month calendar.
 - Follows the DSH dark/light theme; five note colors from the Microsoft To Do palette; zh/en UI.
 
 Install by adding the index `https://wiills.github.io/dsh-keep-notes/index.json` in **Plugins → Discover → Index sources**, or install the pinned commit `git+https://github.com/wiills/dsh-keep-notes.git#49349981b582efae41bfac8ec7009eac03ff9d3d` directly. The index installs from GitHub; npm publishing is pending.

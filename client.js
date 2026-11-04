@@ -41,6 +41,42 @@ window.__ModuleLoader__.load({
       light: { base: '#FAF9F5', line: 'rgba(17, 24, 39, 0.05)' },
       dark: { base: '#0F141A', line: 'rgba(148, 163, 184, 0.09)' },
     };
+    /* Forced black / white mode: pure paper plus a matching local palette, so the
+       page stays readable even when it does not follow the app theme. */
+    const FORCED_PAPER = {
+      light: { base: '#FFFFFF', line: 'rgba(15, 23, 42, 0.06)' },
+      dark: { base: '#000000', line: 'rgba(148, 163, 184, 0.13)' },
+    };
+    const FORCED_TOKENS = {
+      light: {
+        '--dsw-alias-bg-base': '#FFFFFF',
+        '--dsw-alias-bg-layer-1': '#FFFFFF',
+        '--dsw-alias-bg-layer-2': '#F3F2F1',
+        '--dsw-alias-bg-overlay': '#FFFFFF',
+        '--dsw-alias-border-l1': '#E1DFDD',
+        '--dsw-alias-border-l2': '#C8C6C4',
+        '--dsw-alias-brand-primary': '#2564CF',
+        '--dsw-alias-label-primary': '#1B1A19',
+        '--dsw-alias-label-secondary': '#605E5C',
+        '--dsw-alias-state-success-primary': '#107C10',
+        '--dsw-alias-state-warn-primary': '#B7791F',
+        '--dsw-alias-state-error-primary': '#A4262C',
+      },
+      dark: {
+        '--dsw-alias-bg-base': '#000000',
+        '--dsw-alias-bg-layer-1': '#10151C',
+        '--dsw-alias-bg-layer-2': '#1A212B',
+        '--dsw-alias-bg-overlay': '#141A22',
+        '--dsw-alias-border-l1': '#262D36',
+        '--dsw-alias-border-l2': '#333B46',
+        '--dsw-alias-brand-primary': '#4DA3FF',
+        '--dsw-alias-label-primary': '#E8EDF3',
+        '--dsw-alias-label-secondary': '#98A3B0',
+        '--dsw-alias-state-success-primary': '#3FB950',
+        '--dsw-alias-state-warn-primary': '#D29922',
+        '--dsw-alias-state-error-primary': '#F85149',
+      },
+    };
     const NOTE_TINTS = {
       default: '',
       yellow: 'color-mix(in srgb, var(--kn-yellow, #FFB900) 18%, transparent)',
@@ -49,7 +85,7 @@ window.__ModuleLoader__.load({
       purple: 'color-mix(in srgb, var(--kn-purple, #8764B8) 18%, transparent)',
       red: 'color-mix(in srgb, var(--kn-red, #E74856) 18%, transparent)',
     };
-    const DEFAULT_APPEARANCE = { header: '', todos: '', notes: '', dim: 0.82 };
+    const DEFAULT_APPEARANCE = { header: '', todos: '', notes: '', dim: 0.82, mode: 'auto' };
     const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
     const MAX_IMAGE_SIDE = 1440;
     const NOTE_SWATCH = {
@@ -120,9 +156,13 @@ window.__ModuleLoader__.load({
       colorBlue: '蓝色',
       colorPurple: '紫色',
       colorRed: '红色',
-      settings: '背景设置',
+      settings: '外观设置',
       close: '关闭',
       settingsHint: '图片只保存在本机浏览器，建议使用横向图片。',
+      background: '背景',
+      modeAuto: '自动',
+      modeBlack: '黑',
+      modeWhite: '白',
       headerImage: '标题栏',
       todoImage: '待办区',
       notesImage: '便签区',
@@ -197,6 +237,10 @@ window.__ModuleLoader__.load({
       settings: 'Appearance',
       close: 'Close',
       settingsHint: 'Images stay in this browser. Wide pictures work best.',
+      background: 'Background',
+      modeAuto: 'Auto',
+      modeBlack: 'Black',
+      modeWhite: 'White',
       headerImage: 'Title bar',
       todoImage: 'Todo area',
       notesImage: 'Notes area',
@@ -383,7 +427,14 @@ window.__ModuleLoader__.load({
         typeof source.dim === 'number' && source.dim >= 0.3 && source.dim <= 0.98
           ? source.dim
           : DEFAULT_APPEARANCE.dim;
-      return { header: image(source.header), todos: image(source.todos), notes: image(source.notes), dim: dim };
+      const mode = source.mode === 'dark' || source.mode === 'light' ? source.mode : 'auto';
+      return {
+        header: image(source.header),
+        todos: image(source.todos),
+        notes: image(source.notes),
+        dim: dim,
+        mode: mode,
+      };
     }
 
     function readBoard(lang) {
@@ -1496,6 +1547,28 @@ window.__ModuleLoader__.load({
           ),
         ),
         h('p', { className: 'kn-set-hint' }, t('settingsHint')),
+        h(
+          'div',
+          { className: 'kn-set-row kn-set-mode' },
+          h('span', { className: 'kn-set-label' }, t('background')),
+          h(
+            'div',
+            { className: 'kn-seg', role: 'group', 'aria-label': t('background') },
+            ['auto', 'dark', 'light'].map((value) =>
+              h(
+                'button',
+                {
+                  key: value,
+                  type: 'button',
+                  className: cx('kn-seg-btn', (appearance.mode || 'auto') === value && 'is-active'),
+                  'aria-pressed': (appearance.mode || 'auto') === value,
+                  onClick: () => onChange({ mode: value }),
+                },
+                t(value === 'auto' ? 'modeAuto' : value === 'dark' ? 'modeBlack' : 'modeWhite'),
+              ),
+            ),
+          ),
+        ),
         rows.map((row) =>
           h(
             'div',
@@ -1614,14 +1687,25 @@ window.__ModuleLoader__.load({
       const [selected, setSelected] = React.useState(today);
       const [monthIso, setMonthIso] = React.useState(() => startOfMonth(today));
       const [settingsOpen, setSettingsOpen] = React.useState(false);
+      const toolsEndRef = React.useRef(null);
 
       React.useEffect(() => {
         if (!settingsOpen) return undefined;
         const onKeyDown = (event) => {
           if (event.key === 'Escape') setSettingsOpen(false);
         };
+        const onPointerDown = (event) => {
+          const container = toolsEndRef.current;
+          const target = event.target;
+          if (container && target && container.contains(target)) return;
+          setSettingsOpen(false);
+        };
         window.addEventListener('keydown', onKeyDown);
-        return () => window.removeEventListener('keydown', onKeyDown);
+        document.addEventListener('pointerdown', onPointerDown, true);
+        return () => {
+          window.removeEventListener('keydown', onKeyDown);
+          document.removeEventListener('pointerdown', onPointerDown, true);
+        };
       }, [settingsOpen]);
 
       const days = React.useMemo(() => {
@@ -1659,14 +1743,18 @@ window.__ModuleLoader__.load({
       const renameTodo = (id, text) => board.renameTodo(id, text);
       const updateNote = (id, patch) => board.updateNote(id, patch);
       const removeNote = (id) => board.removeNote(id);
-      const accents = TODO_PALETTE[scheme === 'light' ? 'light' : 'dark'];
-      const paper = PAPER[scheme === 'light' ? 'light' : 'dark'];
+      const hostScheme = scheme === 'light' ? 'light' : 'dark';
+      const mode = appearance.mode === 'light' || appearance.mode === 'dark' ? appearance.mode : 'auto';
+      const activeScheme = mode === 'auto' ? hostScheme : mode;
+      const accents = TODO_PALETTE[activeScheme];
+      const paper = mode === 'auto' ? PAPER[activeScheme] : FORCED_PAPER[activeScheme];
+      const forcedTokens = mode !== 'auto' && activeScheme !== hostScheme ? FORCED_TOKENS[activeScheme] : null;
 
       return h(
         'div',
         {
           className: 'kn-root',
-          style: {
+          style: Object.assign({}, forcedTokens || {}, {
             '--kn-dim': String(appearance.dim),
             '--kn-paper': paper.base,
             '--kn-grid': paper.line,
@@ -1676,7 +1764,7 @@ window.__ModuleLoader__.load({
             '--kn-yellow': accents.yellow,
             '--kn-green': accents.green,
             '--kn-red': accents.red,
-          },
+          }),
         },
         h('style', null, CSS),
         h(
@@ -1735,7 +1823,7 @@ window.__ModuleLoader__.load({
                 ),
                 h(
                   'div',
-                  { className: 'kn-tools-end' },
+                  { className: 'kn-tools-end', ref: toolsEndRef },
                   h(
                     'button',
                     {
@@ -1783,7 +1871,7 @@ window.__ModuleLoader__.load({
           h(
             'div',
             { className: 'kn-head-right' },
-            h(ActivityHeatmap, { todos: todos, notes: notes, t: t, lang: lang, scheme: scheme }),
+            h(ActivityHeatmap, { todos: todos, notes: notes, t: t, lang: lang, scheme: activeScheme }),
           ),
         ),
         h(
