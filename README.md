@@ -28,6 +28,12 @@ Keep 风格的便签、按日历排布的待办清单，以及 GitHub 风格的�
    https://wiills.github.io/dsh-keep-notes/index.json
    ```
 
+   Pages 还没启用时，也可以先用 raw 地址（图标同样可用）：
+
+   ```
+   https://raw.githubusercontent.com/wiills/dsh-keep-notes/main/docs/index.json
+   ```
+
 3. 搜索「便签」或「notes」，安装后刷新页面。
 
 索引当前指向 GitHub 上的固定提交，不依赖 npm。
