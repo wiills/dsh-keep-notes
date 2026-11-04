@@ -10,8 +10,12 @@
       let legacyAppearance = loaded.legacyAppearance;
       let writtenMeta = { dim: state.appearance.dim, mode: state.appearance.mode };
       const listeners = new Set();
+      let sync = null;
 
       const notify = () => listeners.forEach((listener) => listener());
+      const push = (op) => {
+        if (sync) sync.push(op);
+      };
 
       const writeBoard = () => {
         try {
@@ -112,78 +116,108 @@
             listeners.delete(listener);
           };
         },
+        attachSync(next) {
+          sync = next;
+        },
+        applyRemote(snapshot) {
+          if (!snapshot || !Array.isArray(snapshot.todos) || !Array.isArray(snapshot.notes)) return;
+          state = {
+            ...state,
+            todos: snapshot.todos.map(sanitizeTodo).filter(Boolean),
+            notes: snapshot.notes.map(sanitizeNote).filter(Boolean),
+          };
+          if (!writeBoard()) state = { ...state, storageIssue: true };
+          notify();
+        },
         addTodo(date, text) {
           const value = String(text || '').trim().slice(0, MAX_TODO_TEXT);
           if (!value) return false;
-          return updateTodos((todos) =>
-            todos.concat([
-              { id: newId('t'), text: value, date: date, done: false, createdAt: Date.now(), completedAt: null },
-            ]),
-          );
+          const todo = { id: newId('t'), text: value, date: date, done: false, createdAt: Date.now(), completedAt: null };
+          const saved = updateTodos((todos) => todos.concat([todo]));
+          push({ type: 'addTodo', todo: todo });
+          return saved;
         },
         toggleTodo(id) {
-          return updateTodos((todos) =>
-            todos.map((todo) =>
-              todo.id === id ? { ...todo, done: !todo.done, completedAt: todo.done ? null : Date.now() } : todo,
+          const todo = state.todos.find((item) => item.id === id);
+          if (!todo) return false;
+          const saved = updateTodos((todos) =>
+            todos.map((item) =>
+              item.id === id ? { ...item, done: !item.done, completedAt: item.done ? null : Date.now() } : item,
             ),
           );
+          push({ type: 'updateTodo', id: id, done: !todo.done });
+          return saved;
         },
         renameTodo(id, text) {
           const value = String(text || '').trim().slice(0, MAX_TODO_TEXT);
           if (!value) return false;
-          return updateTodos((todos) => todos.map((todo) => (todo.id === id ? { ...todo, text: value } : todo)));
+          const saved = updateTodos((todos) => todos.map((todo) => (todo.id === id ? { ...todo, text: value } : todo)));
+          push({ type: 'updateTodo', id: id, text: value });
+          return saved;
         },
         removeTodo(id) {
-          return updateTodos((todos) => todos.filter((todo) => todo.id !== id));
+          const saved = updateTodos((todos) => todos.filter((todo) => todo.id !== id));
+          push({ type: 'removeTodo', id: id });
+          return saved;
         },
         addNote(date, fixed, color, text) {
           const value = String(text || '').trim().slice(0, MAX_NOTE_TEXT);
           if (!value) return false;
           const now = Date.now();
-          return updateNotes((notes) =>
-            notes.concat([
-              {
-                id: newId('n'),
-                text: value,
-                date: fixed ? null : date,
-                fixed: fixed === true,
-                color: NOTE_COLORS.indexOf(color) >= 0 ? color : 'default',
-                createdAt: now,
-                updatedAt: now,
-              },
-            ]),
-          );
+          const note = {
+            id: newId('n'),
+            text: value,
+            date: fixed ? null : date,
+            fixed: fixed === true,
+            color: NOTE_COLORS.indexOf(color) >= 0 ? color : 'default',
+            createdAt: now,
+            updatedAt: now,
+          };
+          const saved = updateNotes((notes) => notes.concat([note]));
+          push({ type: 'addNote', note: note });
+          return saved;
         },
         updateNote(id, patch) {
           const nextPatch = { ...patch };
           if (typeof nextPatch.text === 'string') nextPatch.text = nextPatch.text.slice(0, MAX_NOTE_TEXT);
-          return updateNotes((notes) =>
+          const saved = updateNotes((notes) =>
             notes.map((note) => (note.id === id ? { ...note, ...nextPatch, updatedAt: Date.now() } : note)),
           );
+          push(Object.assign({ type: 'updateNote', id: id }, nextPatch));
+          return saved;
         },
         removeNote(id) {
-          return updateNotes((notes) => notes.filter((note) => note.id !== id));
+          const saved = updateNotes((notes) => notes.filter((note) => note.id !== id));
+          push({ type: 'removeNote', id: id });
+          return saved;
         },
         saveFixed(text, color) {
           const value = String(text || '').trim().slice(0, MAX_NOTE_TEXT);
           const tint = NOTE_COLORS.indexOf(color) >= 0 ? color : 'default';
           const existing = state.notes.find((note) => note.fixed === true);
+          let saved = true;
           if (existing) {
-            if (!value) return updateNotes((notes) => notes.filter((note) => note.id !== existing.id));
-            if (existing.text === value && existing.color === tint) return true;
-            return updateNotes((notes) =>
-              notes.map((note) =>
-                note.id === existing.id ? { ...note, text: value, color: tint, updatedAt: Date.now() } : note,
-              ),
+            if (!value) {
+              saved = updateNotes((notes) => notes.filter((note) => note.id !== existing.id));
+            } else if (existing.text === value && existing.color === tint) {
+              saved = true;
+            } else {
+              saved = updateNotes((notes) =>
+                notes.map((note) =>
+                  note.id === existing.id ? { ...note, text: value, color: tint, updatedAt: Date.now() } : note,
+                ),
+              );
+            }
+          } else if (value) {
+            const now = Date.now();
+            saved = updateNotes((notes) =>
+              notes.concat([
+                { id: newId('n'), text: value, date: null, fixed: true, color: tint, createdAt: now, updatedAt: now },
+              ]),
             );
           }
-          if (!value) return true;
-          const now = Date.now();
-          return updateNotes((notes) =>
-            notes.concat([
-              { id: newId('n'), text: value, date: null, fixed: true, color: tint, createdAt: now, updatedAt: now },
-            ]),
-          );
+          push({ type: 'saveFixed', text: value, color: tint });
+          return saved;
         },
         setAppearance(patch) {
           const nextMeta = sanitizeMeta(Object.assign({}, state.appearance, patch || {}));

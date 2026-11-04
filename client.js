@@ -4,8 +4,8 @@
  * Browser half of the Keep-style notes & todos bundle.
  *
  * Renders one root-scoped main panel (key `keep-notes`) and its sidebar entry in
- * `sidebar.panellist`. The panel keeps its own board in browser storage, so the
- * Host contributes nothing but the Loader row.
+ * `sidebar.panellist`. The Host owns the shared board and its agent tools; this
+ * half keeps a localStorage cache and syncs item ops through the Host API.
  */
 window.__ModuleLoader__.load({
   id: 'dsh-keep-notes',
@@ -22,6 +22,7 @@ window.__ModuleLoader__.load({
     const STORAGE_KEY = 'dsh.keep-notes.board.v1';
     const APPEARANCE_KEY = 'dsh.keep-notes.appearance.v1';
     const IMAGES_KEY = 'dsh.keep-notes.images.v1';
+    const SYNC_KEY = 'dsh.keep-notes.sync.v1';
 
     const NOTE_COLORS = ['default', 'yellow', 'green', 'blue', 'purple', 'red'];
     /* Microsoft To Do palette: list colours for light and dark themes. */
@@ -378,7 +379,15 @@ window.__ModuleLoader__.load({
 
     function newId(prefix) {
       idSequence += 1;
-      return prefix + '-' + Date.now().toString(36) + '-' + idSequence.toString(36);
+      return (
+        prefix +
+        '-' +
+        Date.now().toString(36) +
+        '-' +
+        idSequence.toString(36) +
+        '-' +
+        Math.random().toString(36).slice(2, 6)
+      );
     }
 
     const SEED = {
@@ -602,8 +611,12 @@ window.__ModuleLoader__.load({
       let legacyAppearance = loaded.legacyAppearance;
       let writtenMeta = { dim: state.appearance.dim, mode: state.appearance.mode };
       const listeners = new Set();
+      let sync = null;
 
       const notify = () => listeners.forEach((listener) => listener());
+      const push = (op) => {
+        if (sync) sync.push(op);
+      };
 
       const writeBoard = () => {
         try {
@@ -704,78 +717,108 @@ window.__ModuleLoader__.load({
             listeners.delete(listener);
           };
         },
+        attachSync(next) {
+          sync = next;
+        },
+        applyRemote(snapshot) {
+          if (!snapshot || !Array.isArray(snapshot.todos) || !Array.isArray(snapshot.notes)) return;
+          state = {
+            ...state,
+            todos: snapshot.todos.map(sanitizeTodo).filter(Boolean),
+            notes: snapshot.notes.map(sanitizeNote).filter(Boolean),
+          };
+          if (!writeBoard()) state = { ...state, storageIssue: true };
+          notify();
+        },
         addTodo(date, text) {
           const value = String(text || '').trim().slice(0, MAX_TODO_TEXT);
           if (!value) return false;
-          return updateTodos((todos) =>
-            todos.concat([
-              { id: newId('t'), text: value, date: date, done: false, createdAt: Date.now(), completedAt: null },
-            ]),
-          );
+          const todo = { id: newId('t'), text: value, date: date, done: false, createdAt: Date.now(), completedAt: null };
+          const saved = updateTodos((todos) => todos.concat([todo]));
+          push({ type: 'addTodo', todo: todo });
+          return saved;
         },
         toggleTodo(id) {
-          return updateTodos((todos) =>
-            todos.map((todo) =>
-              todo.id === id ? { ...todo, done: !todo.done, completedAt: todo.done ? null : Date.now() } : todo,
+          const todo = state.todos.find((item) => item.id === id);
+          if (!todo) return false;
+          const saved = updateTodos((todos) =>
+            todos.map((item) =>
+              item.id === id ? { ...item, done: !item.done, completedAt: item.done ? null : Date.now() } : item,
             ),
           );
+          push({ type: 'updateTodo', id: id, done: !todo.done });
+          return saved;
         },
         renameTodo(id, text) {
           const value = String(text || '').trim().slice(0, MAX_TODO_TEXT);
           if (!value) return false;
-          return updateTodos((todos) => todos.map((todo) => (todo.id === id ? { ...todo, text: value } : todo)));
+          const saved = updateTodos((todos) => todos.map((todo) => (todo.id === id ? { ...todo, text: value } : todo)));
+          push({ type: 'updateTodo', id: id, text: value });
+          return saved;
         },
         removeTodo(id) {
-          return updateTodos((todos) => todos.filter((todo) => todo.id !== id));
+          const saved = updateTodos((todos) => todos.filter((todo) => todo.id !== id));
+          push({ type: 'removeTodo', id: id });
+          return saved;
         },
         addNote(date, fixed, color, text) {
           const value = String(text || '').trim().slice(0, MAX_NOTE_TEXT);
           if (!value) return false;
           const now = Date.now();
-          return updateNotes((notes) =>
-            notes.concat([
-              {
-                id: newId('n'),
-                text: value,
-                date: fixed ? null : date,
-                fixed: fixed === true,
-                color: NOTE_COLORS.indexOf(color) >= 0 ? color : 'default',
-                createdAt: now,
-                updatedAt: now,
-              },
-            ]),
-          );
+          const note = {
+            id: newId('n'),
+            text: value,
+            date: fixed ? null : date,
+            fixed: fixed === true,
+            color: NOTE_COLORS.indexOf(color) >= 0 ? color : 'default',
+            createdAt: now,
+            updatedAt: now,
+          };
+          const saved = updateNotes((notes) => notes.concat([note]));
+          push({ type: 'addNote', note: note });
+          return saved;
         },
         updateNote(id, patch) {
           const nextPatch = { ...patch };
           if (typeof nextPatch.text === 'string') nextPatch.text = nextPatch.text.slice(0, MAX_NOTE_TEXT);
-          return updateNotes((notes) =>
+          const saved = updateNotes((notes) =>
             notes.map((note) => (note.id === id ? { ...note, ...nextPatch, updatedAt: Date.now() } : note)),
           );
+          push(Object.assign({ type: 'updateNote', id: id }, nextPatch));
+          return saved;
         },
         removeNote(id) {
-          return updateNotes((notes) => notes.filter((note) => note.id !== id));
+          const saved = updateNotes((notes) => notes.filter((note) => note.id !== id));
+          push({ type: 'removeNote', id: id });
+          return saved;
         },
         saveFixed(text, color) {
           const value = String(text || '').trim().slice(0, MAX_NOTE_TEXT);
           const tint = NOTE_COLORS.indexOf(color) >= 0 ? color : 'default';
           const existing = state.notes.find((note) => note.fixed === true);
+          let saved = true;
           if (existing) {
-            if (!value) return updateNotes((notes) => notes.filter((note) => note.id !== existing.id));
-            if (existing.text === value && existing.color === tint) return true;
-            return updateNotes((notes) =>
-              notes.map((note) =>
-                note.id === existing.id ? { ...note, text: value, color: tint, updatedAt: Date.now() } : note,
-              ),
+            if (!value) {
+              saved = updateNotes((notes) => notes.filter((note) => note.id !== existing.id));
+            } else if (existing.text === value && existing.color === tint) {
+              saved = true;
+            } else {
+              saved = updateNotes((notes) =>
+                notes.map((note) =>
+                  note.id === existing.id ? { ...note, text: value, color: tint, updatedAt: Date.now() } : note,
+                ),
+              );
+            }
+          } else if (value) {
+            const now = Date.now();
+            saved = updateNotes((notes) =>
+              notes.concat([
+                { id: newId('n'), text: value, date: null, fixed: true, color: tint, createdAt: now, updatedAt: now },
+              ]),
             );
           }
-          if (!value) return true;
-          const now = Date.now();
-          return updateNotes((notes) =>
-            notes.concat([
-              { id: newId('n'), text: value, date: null, fixed: true, color: tint, createdAt: now, updatedAt: now },
-            ]),
-          );
+          push({ type: 'saveFixed', text: value, color: tint });
+          return saved;
         },
         setAppearance(patch) {
           const nextMeta = sanitizeMeta(Object.assign({}, state.appearance, patch || {}));
@@ -839,6 +882,178 @@ window.__ModuleLoader__.load({
           state = { ...state, storageIssue: false };
           notify();
         },
+      };
+    }
+
+    /* --------------------------------------------------------------------- */
+    /* src/sync.js                                                            */
+    /* --------------------------------------------------------------------- */
+
+    /* ------------------------------------------------------------------ */
+    /* Host sync                                                           */
+    /* ------------------------------------------------------------------ */
+
+    /*
+     * Keeps the localStorage board as an offline cache and sends item ops to the
+     * Host. Ops carry an id, so a retried request cannot duplicate an item.
+     */
+    function createBoardSync(board) {
+      const API = '/dsh-keep-notes';
+      const POLL_MS = 4000;
+      const MAX_QUEUE = 200;
+      let queue = [];
+      let started = false;
+      let initialized = false;
+      let initializing = false;
+      let flushing = false;
+      let lastRevision = -1;
+      let timer = null;
+      let onFocus = null;
+      let onVisibility = null;
+
+      const loadQueue = () => {
+        try {
+          const raw = window.localStorage.getItem(SYNC_KEY);
+          const parsed = raw ? JSON.parse(raw) : [];
+          return Array.isArray(parsed)
+            ? parsed.filter((op) => op && typeof op === 'object' && typeof op.opId === 'string')
+            : [];
+        } catch (error) {
+          return [];
+        }
+      };
+
+      const saveQueue = () => {
+        try {
+          window.localStorage.setItem(SYNC_KEY, JSON.stringify(queue));
+        } catch (error) {
+          /* The board write already reports storage pressure. */
+        }
+      };
+
+      queue = loadQueue();
+
+      const request = async (method, path, body) => {
+        const response = await window.fetch(API + path, {
+          method: method,
+          cache: 'no-store',
+          credentials: 'same-origin',
+          headers: body
+            ? { accept: 'application/json', 'content-type': 'application/json' }
+            : { accept: 'application/json' },
+          body: body ? JSON.stringify(body) : undefined,
+        });
+        if (!response.ok) {
+          let detail = '';
+          try {
+            const parsed = await response.json();
+            detail = parsed && parsed.error ? String(parsed.error) : '';
+          } catch (error) {
+            detail = '';
+          }
+          throw new Error('keep-notes sync failed (' + response.status + ')' + (detail ? ': ' + detail : ''));
+        }
+        return response.json();
+      };
+
+      const applyState = (state) => {
+        if (!state || typeof state.revision !== 'number') return;
+        lastRevision = state.revision;
+        board.applyRemote(state);
+      };
+
+      const init = async () => {
+        if (initialized || initializing) return;
+        initializing = true;
+        try {
+          const state = await request('GET', '/state');
+          if (state.revision === 0) {
+            const local = board.getSnapshot();
+            applyState(await request('POST', '/init', { todos: local.todos, notes: local.notes }));
+          } else {
+            applyState(state);
+          }
+          initialized = true;
+        } finally {
+          initializing = false;
+        }
+      };
+
+      const flush = async () => {
+        if (!initialized || flushing || queue.length === 0) return;
+        flushing = true;
+        const batch = queue.slice(0);
+        try {
+          const state = await request('POST', '/ops', { ops: batch });
+          const sent = new Set(batch.map((op) => op.opId));
+          queue = queue.filter((op) => !sent.has(op.opId));
+          saveQueue();
+          if (state && typeof state.revision === 'number') lastRevision = state.revision;
+          if (queue.length === 0) applyState(state);
+        } catch (error) {
+          /* Keep the queue; the next tick retries it. */
+        } finally {
+          flushing = false;
+        }
+      };
+
+      const poll = async () => {
+        if (!initialized || flushing || queue.length > 0) return;
+        try {
+          const state = await request('GET', '/state');
+          if (state.revision !== lastRevision) applyState(state);
+        } catch (error) {
+          /* Keep the local cache usable while the Host is unreachable. */
+        }
+      };
+
+      const tick = () => {
+        if (!started) return;
+        if (!initialized) {
+          init()
+            .then(() => (queue.length ? flush() : undefined))
+            .catch(() => {});
+          return;
+        }
+        (queue.length ? flush() : poll()).catch(() => {});
+      };
+
+      const push = (op) => {
+        if (!op || typeof op !== 'object') return;
+        if (typeof op.opId !== 'string') op.opId = newId('op');
+        queue.push(op);
+        if (queue.length > MAX_QUEUE) queue = queue.slice(-MAX_QUEUE);
+        saveQueue();
+        if (started && initialized) flush();
+      };
+
+      return {
+        start() {
+          if (started) return () => {};
+          started = true;
+          init()
+            .then(() => (queue.length ? flush() : undefined))
+            .catch(() => {});
+          timer = window.setInterval(tick, POLL_MS);
+          onFocus = () => tick();
+          onVisibility = () => {
+            if (!document.hidden) tick();
+          };
+          window.addEventListener('focus', onFocus);
+          if (typeof document !== 'undefined' && document.addEventListener) {
+            document.addEventListener('visibilitychange', onVisibility);
+          }
+          return () => {
+            started = false;
+            if (timer !== null) window.clearInterval(timer);
+            timer = null;
+            window.removeEventListener('focus', onFocus);
+            if (typeof document !== 'undefined' && document.removeEventListener) {
+              document.removeEventListener('visibilitychange', onVisibility);
+            }
+          };
+        },
+        push: push,
       };
     }
 
@@ -3174,6 +3389,11 @@ button.kn-cell-day:focus-visible {
       ctx.effect(() => ctx.locale.register(NS, 'en', en), 'keep-notes: en dictionary');
       const t = ctx.locale.bind(NS);
       const board = createBoard(ctx.locale.getLocale().active);
+      if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
+        const sync = createBoardSync(board);
+        board.attachSync(sync);
+        ctx.effect(() => sync.start(), 'keep-notes: host sync');
+      }
 
       const themeService = typeof ctx.get === 'function' ? ctx.get('theme') : null;
       const readScheme = () => {

@@ -1,7 +1,7 @@
 {
   "name": "dsh-keep-notes",
   "version": "1.1.0",
-  "description": "Keep-style notes, calendar todos and a GitHub-style activity heatmap in a DSH sidebar panel.",
+  "description": "Keep-style notes, calendar todos and a GitHub-style activity heatmap in a DSH sidebar panel, with shared agent tools.",
   "license": "MIT",
   "author": "wiills <me@wiills.com>",
   "homepage": "https://github.com/wiills/dsh-keep-notes#readme",
@@ -19,6 +19,8 @@
     "todo",
     "calendar",
     "heatmap",
+    "agent",
+    "tools",
     "keep"
   ],
   "engines": {
@@ -37,6 +39,8 @@
   },
   "files": [
     "index.js",
+    "host-store.js",
+    "host-tools.js",
     "client.js",
     "cordis.patch.yml",
     "locale/*.json",
@@ -44,7 +48,7 @@
   ],
   "scripts": {
     "build": "node scripts/build-client.mjs",
-    "check": "node --check index.js && node --check client.js && node scripts/build-client.mjs --check",
+    "check": "node --check index.js && node --check host-store.js && node --check host-tools.js && node --check client.js && node scripts/build-client.mjs --check",
     "test": "node --test",
     "validate:index": "node scripts/validate-index.mjs"
   },

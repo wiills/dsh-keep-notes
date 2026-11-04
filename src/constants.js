@@ -3,6 +3,7 @@
     const STORAGE_KEY = 'dsh.keep-notes.board.v1';
     const APPEARANCE_KEY = 'dsh.keep-notes.appearance.v1';
     const IMAGES_KEY = 'dsh.keep-notes.images.v1';
+    const SYNC_KEY = 'dsh.keep-notes.sync.v1';
 
     const NOTE_COLORS = ['default', 'yellow', 'green', 'blue', 'purple', 'red'];
     /* Microsoft To Do palette: list colours for light and dark themes. */

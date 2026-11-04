@@ -9,6 +9,11 @@
       ctx.effect(() => ctx.locale.register(NS, 'en', en), 'keep-notes: en dictionary');
       const t = ctx.locale.bind(NS);
       const board = createBoard(ctx.locale.getLocale().active);
+      if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
+        const sync = createBoardSync(board);
+        board.attachSync(sync);
+        ctx.effect(() => sync.start(), 'keep-notes: host sync');
+      }
 
       const themeService = typeof ctx.get === 'function' ? ctx.get('theme') : null;
       const readScheme = () => {
