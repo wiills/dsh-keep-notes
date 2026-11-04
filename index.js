@@ -7,10 +7,12 @@
  */
 import { BoardStore } from './host-store.js';
 import { createKeepNotesTools } from './host-tools.js';
+import { FolderSync } from './host-sync.js';
 
 const STATE_ROUTE = '/dsh-keep-notes/state';
 const INIT_ROUTE = '/dsh-keep-notes/init';
 const OPS_ROUTE = '/dsh-keep-notes/ops';
+const SYNC_ROUTE = '/dsh-keep-notes/sync';
 const MAX_BODY_BYTES = 2_500_000;
 
 export const inject = ['tools'];
@@ -82,7 +84,11 @@ function route(path, handler, admit) {
 
 export function createBoardRoutes(store, options = {}) {
   const admit = options.admit;
+  const sync = options.sync;
   if (typeof admit !== 'function') throw new Error('createBoardRoutes requires an admit function');
+  if (!sync || typeof sync.getStatus !== 'function' || typeof sync.setFolder !== 'function') {
+    throw new Error('createBoardRoutes requires a sync controller');
+  }
   const authorize = (req) => admit(req);
   return [
     route(STATE_ROUTE, async (req, res) => {
@@ -107,19 +113,37 @@ export function createBoardRoutes(store, options = {}) {
       const body = await readJson(req);
       send(res, 200, await store.applyOps(body && body.ops));
     }, authorize),
+    route(SYNC_ROUTE, async (req, res) => {
+      if (req.method === 'GET') {
+        send(res, 200, sync.getStatus());
+        return;
+      }
+      if (req.method !== 'POST') {
+        send(res, 405, { error: 'method not allowed' });
+        return;
+      }
+      const body = await readJson(req);
+      send(res, 200, await sync.setFolder(body && body.folder));
+    }, authorize),
   ];
 }
 
-export function apply(ctx) {
+export function apply(ctx, options = {}) {
   const store = new BoardStore();
+  const folderSync = options.folderSync || new FolderSync({ store });
   for (const definition of createKeepNotesTools(store)) {
     ctx.effect(() => ctx.tools.register(definition), 'keep-notes: ' + definition.name);
+  }
+
+  if (options.folderSync !== null) {
+    ctx.effect(() => folderSync.start(), 'keep-notes: folder sync');
   }
 
   ctx.inject(['webServer', 'connection'], (child) => {
     child.effect(() => {
       const disposers = createBoardRoutes(store, {
         admit: (request) => child.connection.admit(request),
+        sync: folderSync,
       }).map((route) => child.webServer.register(route));
       return () => {
         for (const dispose of disposers) dispose();

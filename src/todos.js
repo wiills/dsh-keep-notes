@@ -38,21 +38,43 @@
       const { todo, t } = props;
       const [editing, setEditing] = React.useState(false);
       const [draft, setDraft] = React.useState(todo.text);
+      const [color, setColor] = React.useState(todo.color);
 
       const begin = () => {
         setDraft(todo.text);
+        setColor(todo.color);
         setEditing(true);
       };
       const commit = () => {
         const value = draft.trim();
-        if (value && value !== todo.text) props.onRename(todo.id, value);
+        const changed = value !== todo.text || color !== todo.color;
+        if (value && changed) props.onUpdate(todo.id, { text: value, color: color });
         setEditing(false);
+      };
+      /* Colours save on pick, so the row's tint follows the click at once. The
+         editor stays open while focus moves inside it — picking a colour — and
+         commits when focus leaves the row. */
+      const paint = (id) => {
+        setColor(id);
+        props.onUpdate(todo.id, { color: id });
+      };
+      const leave = (event) => {
+        const next = event.relatedTarget;
+        if (next && event.currentTarget.contains(next)) return;
+        commit();
       };
 
       if (editing) {
         return h(
           'li',
-          { className: 'kn-todo is-editing' },
+          {
+            className: cx('kn-todo is-editing', todo.color !== 'default' && 'has-color'),
+            style: itemTint(todo.color),
+            onBlur: leave,
+            onKeyDown: (event) => {
+              if (event.key === 'Escape') setEditing(false);
+            },
+          },
           h('input', {
             className: 'kn-todo-edit',
             type: 'text',
@@ -61,7 +83,6 @@
             autoFocus: true,
             'aria-label': t('editTodo'),
             onChange: (event) => setDraft(event.target.value),
-            onBlur: commit,
             onKeyDown: (event) => {
               if (event.key === 'Enter') {
                 event.preventDefault();
@@ -72,12 +93,20 @@
               }
             },
           }),
+          h(
+            'div',
+            { className: 'kn-todo-colors', onMouseDown: (event) => event.preventDefault() },
+            h(ColorSwatches, { t: t, value: color, onChange: paint }),
+          ),
         );
       }
 
       return h(
         'li',
-        { className: cx('kn-todo', todo.done && 'is-done') },
+        {
+          className: cx('kn-todo', todo.done && 'is-done', todo.color !== 'default' && 'has-color'),
+          style: itemTint(todo.color),
+        },
         h(
           'button',
           {
@@ -130,7 +159,7 @@
             t: props.t,
             onToggle: props.onToggle,
             onRemove: props.onRemove,
-            onRename: props.onRename,
+            onUpdate: props.onUpdate,
           }),
         ),
       );
@@ -169,7 +198,7 @@
           todos: todos,
           onToggle: props.onToggle,
           onRemove: props.onRemove,
-          onRename: props.onRename,
+          onUpdate: props.onUpdate,
         }),
         h(TodoInput, {
           placeholder: t('todoPlaceholder'),
@@ -196,7 +225,7 @@
           todos: todos,
           onToggle: props.onToggle,
           onRemove: props.onRemove,
-          onRename: props.onRename,
+          onUpdate: props.onUpdate,
         }),
         h(TodoInput, {
           placeholder: t('todoPlaceholder'),

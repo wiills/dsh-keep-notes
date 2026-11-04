@@ -135,12 +135,38 @@ test('todo changes are written to the board key', () => {
   raw = JSON.parse(store.getItem('dsh.keep-notes.board.v1'));
   assert.equal(raw.todos[0].done, true);
 
-  assert.equal(board.renameTodo(id, 'renamed'), true);
+  assert.equal(board.updateTodo(id, { text: 'renamed' }), true);
   raw = JSON.parse(store.getItem('dsh.keep-notes.board.v1'));
   assert.equal(raw.todos[0].text, 'renamed');
 
+  assert.equal(board.updateTodo(id, { color: 'purple' }), true);
+  raw = JSON.parse(store.getItem('dsh.keep-notes.board.v1'));
+  assert.equal(raw.todos[0].color, 'purple');
+
+  assert.equal(board.updateTodo(id, { color: 'chartreuse' }), true);
+  raw = JSON.parse(store.getItem('dsh.keep-notes.board.v1'));
+  assert.equal(raw.todos[0].color, 'default');
+
   assert.equal(board.removeTodo(id), true);
   assert.equal(JSON.parse(store.getItem('dsh.keep-notes.board.v1')).todos.length, 0);
+});
+
+test('a new todo takes an explicit colour and older todos read as default', () => {
+  const store = emptyStorage();
+  const board = makeBoard(store);
+  assert.equal(board.addTodo('2026-11-04', 'coloured', 'green'), true);
+  assert.equal(board.getSnapshot().todos[0].color, 'green');
+
+  store.setItem(
+    'dsh.keep-notes.board.v1',
+    JSON.stringify({
+      version: 2,
+      todos: [{ id: 't-legacy', text: 'from before colours', date: null, done: false, createdAt: 1 }],
+      notes: [],
+    }),
+  );
+  const legacy = makeBoard(store);
+  assert.equal(legacy.getSnapshot().todos[0].color, 'default');
 });
 
 test('a failed write is exposed instead of silently discarded', () => {

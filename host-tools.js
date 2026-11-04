@@ -3,10 +3,11 @@
  * same Host board the browser panel syncs with, so an agent and the panel see
  * one list.
  */
-import { MAX_NOTE_TEXT, MAX_TODO_TEXT, NOTE_COLORS } from './host-store.js';
+import { ITEM_COLORS, MAX_NOTE_TEXT, MAX_TODO_TEXT } from './host-store.js';
 
 const DATE_DESCRIPTION = 'Local date in YYYY-MM-DD. Omit it for a global item that is not tied to a day.';
-const COLOR_DESCRIPTION = 'Note tint: ' + NOTE_COLORS.join(', ') + '.';
+const TODO_COLOR_DESCRIPTION = 'Todo colour: ' + ITEM_COLORS.join(', ') + '.';
+const NOTE_COLOR_DESCRIPTION = 'Note tint: ' + ITEM_COLORS.join(', ') + '.';
 const TODO_SCHEMA = {
   type: 'object',
   additionalProperties: false,
@@ -15,10 +16,12 @@ const TODO_SCHEMA = {
     text: { type: 'string' },
     date: { oneOf: [{ type: 'string' }, { type: 'null' }] },
     done: { type: 'boolean' },
+    color: { type: 'string', enum: ITEM_COLORS },
     createdAt: { type: 'integer' },
+    updatedAt: { type: 'integer' },
     completedAt: { oneOf: [{ type: 'integer' }, { type: 'null' }] },
   },
-  required: ['id', 'text', 'date', 'done', 'createdAt', 'completedAt'],
+  required: ['id', 'text', 'date', 'done', 'color', 'createdAt', 'updatedAt', 'completedAt'],
 };
 const NOTE_SCHEMA = {
   type: 'object',
@@ -28,7 +31,7 @@ const NOTE_SCHEMA = {
     text: { type: 'string' },
     date: { oneOf: [{ type: 'string' }, { type: 'null' }] },
     fixed: { type: 'boolean' },
-    color: { type: 'string', enum: NOTE_COLORS },
+    color: { type: 'string', enum: ITEM_COLORS },
     createdAt: { type: 'integer' },
     updatedAt: { type: 'integer' },
   },
@@ -87,7 +90,18 @@ function dateValue(value) {
 
 function itemLine(item, kind) {
   if (kind === 'todo') {
-    return '- [' + (item.done ? 'x' : ' ') + '] ' + clip(item.text, 500) + ' — id: ' + item.id + ', date: ' + (item.date || 'global');
+    return (
+      '- [' +
+      (item.done ? 'x' : ' ') +
+      '] ' +
+      clip(item.text, 500) +
+      ' — id: ' +
+      item.id +
+      ', date: ' +
+      (item.date || 'global') +
+      ', color: ' +
+      item.color
+    );
   }
   return (
     '- ' +
@@ -127,7 +141,9 @@ function renderTodo(value) {
         ') is ' +
         (value.todo.done ? 'done' : 'open') +
         (value.todo.date ? ' on ' + value.todo.date : ' globally') +
-        '.',
+        ' with ' +
+        value.todo.color +
+        ' color.',
     },
   ];
 }
@@ -184,6 +200,7 @@ export function createKeepNotesTools(store) {
             oneOf: [{ type: 'string' }, { type: 'null' }],
             description: DATE_DESCRIPTION,
           },
+          color: { type: 'string', enum: ITEM_COLORS, description: TODO_COLOR_DESCRIPTION },
         },
         ['text'],
       ),
@@ -192,18 +209,19 @@ export function createKeepNotesTools(store) {
       async execute(args) {
         const value = text(args && args.text, MAX_TODO_TEXT);
         if (!value) throw new Error('text must not be empty');
-        return store.addTodo({ text: value, date: dateValue(args && args.date) });
+        return store.addTodo({ text: value, date: dateValue(args && args.date), color: args && args.color });
       },
     },
     {
       name: 'keep_notes_update_todo',
       description:
-        'Change a todo in the Keep Notes panel: rename it, mark it done or open, or both. Use keep_notes_list to find its id.',
+        'Change a todo in the Keep Notes panel: rename it, mark it done or open, change its colour, or any combination. Use keep_notes_list to find its id.',
       parameters: parameters(
         {
           id: { type: 'string', description: 'Todo id from keep_notes_list.' },
           text: { type: 'string', description: 'New todo text, up to ' + MAX_TODO_TEXT + ' characters.' },
           done: { type: 'boolean', description: 'true marks it done; false reopens it.' },
+          color: { type: 'string', enum: ITEM_COLORS, description: TODO_COLOR_DESCRIPTION },
         },
         ['id'],
       ),
@@ -213,6 +231,7 @@ export function createKeepNotesTools(store) {
         const value = await store.updateTodo(String(args && args.id), {
           text: args && args.text,
           done: args && args.done,
+          color: args && args.color,
         });
         if (!value) throw new Error('todo not found or nothing changed');
         return value;
@@ -229,7 +248,7 @@ export function createKeepNotesTools(store) {
             oneOf: [{ type: 'string' }, { type: 'null' }],
             description: DATE_DESCRIPTION,
           },
-          color: { type: 'string', enum: NOTE_COLORS, description: COLOR_DESCRIPTION },
+          color: { type: 'string', enum: ITEM_COLORS, description: NOTE_COLOR_DESCRIPTION },
         },
         ['text'],
       ),
@@ -249,7 +268,7 @@ export function createKeepNotesTools(store) {
         {
           id: { type: 'string', description: 'Note id from keep_notes_list.' },
           text: { type: 'string', description: 'New note text, up to ' + MAX_NOTE_TEXT + ' characters.' },
-          color: { type: 'string', enum: NOTE_COLORS, description: COLOR_DESCRIPTION },
+          color: { type: 'string', enum: ITEM_COLORS, description: NOTE_COLOR_DESCRIPTION },
         },
         ['id'],
       ),

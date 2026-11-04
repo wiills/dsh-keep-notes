@@ -129,10 +129,20 @@
           if (!writeBoard()) state = { ...state, storageIssue: true };
           notify();
         },
-        addTodo(date, text) {
+        addTodo(date, text, color) {
           const value = String(text || '').trim().slice(0, MAX_TODO_TEXT);
           if (!value) return false;
-          const todo = { id: newId('t'), text: value, date: date, done: false, createdAt: Date.now(), completedAt: null };
+          const now = Date.now();
+          const todo = {
+            id: newId('t'),
+            text: value,
+            date: date,
+            done: false,
+            color: ITEM_COLORS.indexOf(color) >= 0 ? color : 'default',
+            createdAt: now,
+            updatedAt: now,
+            completedAt: null,
+          };
           const saved = updateTodos((todos) => todos.concat([todo]));
           push({ type: 'addTodo', todo: todo });
           return saved;
@@ -142,17 +152,29 @@
           if (!todo) return false;
           const saved = updateTodos((todos) =>
             todos.map((item) =>
-              item.id === id ? { ...item, done: !item.done, completedAt: item.done ? null : Date.now() } : item,
+              item.id === id
+                ? { ...item, done: !item.done, updatedAt: Date.now(), completedAt: item.done ? null : Date.now() }
+                : item,
             ),
           );
           push({ type: 'updateTodo', id: id, done: !todo.done });
           return saved;
         },
-        renameTodo(id, text) {
-          const value = String(text || '').trim().slice(0, MAX_TODO_TEXT);
-          if (!value) return false;
-          const saved = updateTodos((todos) => todos.map((todo) => (todo.id === id ? { ...todo, text: value } : todo)));
-          push({ type: 'updateTodo', id: id, text: value });
+        updateTodo(id, patch) {
+          const nextPatch = {};
+          if (typeof patch.text === 'string') {
+            const value = patch.text.trim().slice(0, MAX_TODO_TEXT);
+            if (!value) return false;
+            nextPatch.text = value;
+          }
+          if (patch.color !== undefined) {
+            nextPatch.color = ITEM_COLORS.indexOf(patch.color) >= 0 ? patch.color : 'default';
+          }
+          if (nextPatch.text === undefined && nextPatch.color === undefined) return false;
+          const saved = updateTodos((todos) =>
+            todos.map((todo) => (todo.id === id ? { ...todo, ...nextPatch, updatedAt: Date.now() } : todo)),
+          );
+          push(Object.assign({ type: 'updateTodo', id: id }, nextPatch));
           return saved;
         },
         removeTodo(id) {
@@ -169,7 +191,7 @@
             text: value,
             date: fixed ? null : date,
             fixed: fixed === true,
-            color: NOTE_COLORS.indexOf(color) >= 0 ? color : 'default',
+            color: ITEM_COLORS.indexOf(color) >= 0 ? color : 'default',
             createdAt: now,
             updatedAt: now,
           };
@@ -193,7 +215,7 @@
         },
         saveFixed(text, color) {
           const value = String(text || '').trim().slice(0, MAX_NOTE_TEXT);
-          const tint = NOTE_COLORS.indexOf(color) >= 0 ? color : 'default';
+          const tint = ITEM_COLORS.indexOf(color) >= 0 ? color : 'default';
           const existing = state.notes.find((note) => note.fixed === true);
           let saved = true;
           if (existing) {

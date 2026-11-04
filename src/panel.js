@@ -94,7 +94,7 @@
 
       const toggleTodo = (id) => board.toggleTodo(id);
       const removeTodo = (id) => board.removeTodo(id);
-      const renameTodo = (id, text) => board.renameTodo(id, text);
+      const updateTodo = (id, patch) => board.updateTodo(id, patch);
       const updateNote = (id, patch) => board.updateNote(id, patch);
       const removeNote = (id) => board.removeNote(id);
       const hostScheme = scheme === 'light' ? 'light' : 'dark';
@@ -271,7 +271,7 @@
               onAdd: (text) => board.addTodo(null, text),
               onToggle: toggleTodo,
               onRemove: removeTodo,
-              onRename: renameTodo,
+              onUpdate: updateTodo,
             }),
             view === 'week'
               ? h(
@@ -293,7 +293,7 @@
                       },
                       onToggle: toggleTodo,
                       onRemove: removeTodo,
-                      onRename: renameTodo,
+                      onUpdate: updateTodo,
                     }),
                   ),
                 )

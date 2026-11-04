@@ -269,6 +269,50 @@
 .kn-set-value { flex: 0 0 auto; font-variant-numeric: tabular-nums; }
 .kn-set-status { margin: 0; font-size: 10.5px; color: var(--dsw-alias-state-warn-primary); }
 .kn-set-foot { display: flex; justify-content: flex-end; }
+.kn-sync {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 9px;
+  border-top: 1px solid var(--dsw-alias-border-l1);
+}
+.kn-sync-head { display: flex; align-items: center; gap: 8px; }
+.kn-sync-title { flex: 1 1 auto; font-size: 11.5px; font-weight: 650; }
+.kn-sync-badge {
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 999px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 9.5px;
+  line-height: 1.35;
+}
+.kn-sync-badge.is-on { color: var(--dsw-alias-state-success-primary); border-color: currentColor; }
+.kn-sync-row { display: flex; gap: 6px; align-items: center; }
+.kn-sync-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 28px;
+  padding: 3px 7px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 6px;
+  background: var(--dsw-alias-bg-layer-2);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 10.5px;
+}
+.kn-sync-input:focus-visible {
+  outline: 2px solid var(--kn-blue, var(--dsw-alias-brand-primary));
+  outline-offset: 1px;
+}
+.kn-sync-status {
+  margin: 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 9.5px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.kn-sync-status.is-error { color: var(--dsw-alias-state-error-primary); }
 .kn-section { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .kn-section.has-bg {
   position: relative;
@@ -361,7 +405,9 @@ button.kn-col-head:focus-visible {
 .kn-empty { font-size: 11px; color: var(--dsw-alias-label-secondary); padding: 4px 2px; }
 .kn-todo { display: flex; align-items: flex-start; gap: 6px; padding: 3px; border-radius: 6px; }
 .kn-todo:hover { background: var(--dsw-alias-bg-layer-2); }
-.kn-todo.is-editing { padding: 2px; }
+.kn-todo.has-color { padding-left: 6px; }
+.kn-todo.is-editing { padding: 2px; flex-wrap: wrap; row-gap: 4px; }
+.kn-todo-colors { flex: 0 0 100%; display: flex; justify-content: flex-end; padding-left: 18px; }
 .kn-check {
   flex: 0 0 auto;
   width: 14px;

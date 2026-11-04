@@ -38,12 +38,20 @@ test('tool calls mutate the same board the panel reads', async () => {
   await store.initialize({ todos: [], notes: [] });
   const tools = new Map(createKeepNotesTools(store).map((tool) => [tool.name, tool]));
 
-  const added = await tools.get('keep_notes_add_todo').execute({ text: 'write tests', date: '2026-11-04' }, {});
+  const added = await tools.get('keep_notes_add_todo').execute(
+    { text: 'write tests', date: '2026-11-04', color: 'yellow' },
+    {},
+  );
   assert.equal(added.todo.text, 'write tests');
+  assert.equal(added.todo.color, 'yellow');
   assert.equal(added.revision, 2);
 
-  const updated = await tools.get('keep_notes_update_todo').execute({ id: added.todo.id, done: true }, {});
+  const updated = await tools.get('keep_notes_update_todo').execute(
+    { id: added.todo.id, done: true, color: 'purple' },
+    {},
+  );
   assert.equal(updated.todo.done, true);
+  assert.equal(updated.todo.color, 'purple');
 
   const note = await tools.get('keep_notes_add_note').execute({ text: 'agent note', color: 'green' }, {});
   assert.equal(note.note.color, 'green');
@@ -71,6 +79,28 @@ test('browser operations are idempotent by opId and update one revision', async 
 
   const toggled = await store.applyOps([{ type: 'updateTodo', opId: 'op-2', id: 't-2', done: true }]);
   assert.equal(toggled.todos[0].done, true);
+
+  const painted = await store.applyOps([{ type: 'updateTodo', opId: 'op-3', id: 't-2', color: 'red' }]);
+  assert.equal(painted.todos[0].color, 'red');
+});
+
+test('todo colours come from the shared palette and survive a round trip', async () => {
+  const store = await tempStore();
+  await store.initialize({ todos: [], notes: [] });
+
+  const added = await store.addTodo({ text: 'coloured', date: null, color: 'green' });
+  assert.equal(added.todo.color, 'green');
+  assert.equal((await store.list()).todos[0].color, 'green');
+
+  const updated = await store.updateTodo(added.todo.id, { color: 'purple' });
+  assert.equal(updated.todo.color, 'purple');
+
+  const ignored = await store.updateTodo(added.todo.id, { color: 'chartreuse' });
+  assert.equal(ignored, null);
+  assert.equal((await store.list()).todos[0].color, 'purple');
+
+  const reloaded = new BoardStore({ file: store.file });
+  assert.equal((await reloaded.list()).todos[0].color, 'purple');
 });
 
 test('a failed operation batch leaves both memory and disk unchanged', async () => {
@@ -117,9 +147,20 @@ test('note updates, pinned notes and caps stay inside the Host contract', async 
   assert.equal((await store.list()).notes.filter((item) => item.fixed).length, 0);
 });
 
-test('apply registers the tool surface and the three exact API routes', () => {
+test('apply registers the tool surface and the four exact API routes', () => {
   const tools = new Map();
   const routes = new Map();
+  const sync = {
+    start() {
+      return () => {};
+    },
+    getStatus() {
+      return { enabled: false, folder: '', state: 'disabled' };
+    },
+    async setFolder(folder) {
+      return { enabled: Boolean(folder), folder: folder, state: folder ? 'idle' : 'disabled' };
+    },
+  };
   const child = {
     effect(callback) {
       callback();
@@ -153,7 +194,7 @@ test('apply registers the tool surface and the three exact API routes', () => {
     },
   };
 
-  apply(ctx);
+  apply(ctx, { folderSync: sync });
   assert.deepEqual([...tools.keys()].sort(), [
     'keep_notes_add_note',
     'keep_notes_add_todo',
@@ -166,6 +207,7 @@ test('apply registers the tool surface and the three exact API routes', () => {
     '/dsh-keep-notes/init',
     '/dsh-keep-notes/ops',
     '/dsh-keep-notes/state',
+    '/dsh-keep-notes/sync',
   ]);
   for (const route of routes.values()) {
     assert.equal(route.kind, 'exact');
@@ -175,8 +217,16 @@ test('apply registers the tool surface and the three exact API routes', () => {
 
 test('the HTTP API initializes, writes and reads the same store', async () => {
   const store = await tempStore();
+  const sync = {
+    getStatus() {
+      return { enabled: false, folder: '', state: 'disabled' };
+    },
+    async setFolder(folder) {
+      return { enabled: Boolean(folder), folder: folder, state: folder ? 'idle' : 'disabled' };
+    },
+  };
   const routes = new Map(
-    createBoardRoutes(store, { admit: () => ({ peer: {} }) }).map((route) => [route.path, route]),
+    createBoardRoutes(store, { admit: () => ({ peer: {} }), sync: sync }).map((route) => [route.path, route]),
   );
 
   const invoke = async (route, method, body, headers = { 'content-type': 'application/json' }) => {
@@ -199,7 +249,7 @@ test('the HTTP API initializes, writes and reads the same store', async () => {
   };
 
   const denied = new Map(
-    createBoardRoutes(store, { admit: () => ({ rejection: 401 }) }).map((route) => [route.path, route]),
+    createBoardRoutes(store, { admit: () => ({ rejection: 401 }), sync: sync }).map((route) => [route.path, route]),
   );
   const unauthenticated = await invoke(denied.get('/dsh-keep-notes/state'), 'GET');
   assert.equal(unauthenticated.status, 401);
@@ -230,5 +280,13 @@ test('the HTTP API initializes, writes and reads the same store', async () => {
   assert.equal(state.status, 200);
   assert.equal(state.body.revision, ops.body.revision);
   assert.equal(state.body.todos.length, 2);
+
+  const syncState = await invoke(routes.get('/dsh-keep-notes/sync'), 'GET');
+  assert.equal(syncState.status, 200);
+  assert.equal(syncState.body.enabled, false);
+
+  const syncUpdate = await invoke(routes.get('/dsh-keep-notes/sync'), 'POST', { folder: 'C:\\sync' });
+  assert.equal(syncUpdate.status, 200);
+  assert.equal(syncUpdate.body.folder, 'C:\\sync');
 });
 

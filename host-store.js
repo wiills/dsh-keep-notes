@@ -13,7 +13,8 @@ import path from 'node:path';
 export const MAX_TODO_TEXT = 1000;
 export const MAX_NOTE_TEXT = 20000;
 export const MAX_APPLIED_OPS = 500;
-export const NOTE_COLORS = ['default', 'yellow', 'green', 'blue', 'purple', 'red'];
+export const MAX_TOMBSTONES = 5000;
+export const ITEM_COLORS = ['default', 'yellow', 'green', 'blue', 'purple', 'red'];
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const ID_PATTERN = /^[A-Za-z0-9_-]{1,80}$/;
@@ -49,12 +50,15 @@ export function sanitizeTodo(value, fallbackId) {
   const text = textValue(source.text, MAX_TODO_TEXT);
   if (!text) return null;
   const done = source.done === true;
+  const createdAt = finiteTime(source.createdAt, Date.now());
   return {
     id: validId(source.id) || validId(fallbackId) || makeId('t'),
     text: text,
     date: normalizeDate(source.date),
     done: done,
-    createdAt: finiteTime(source.createdAt, Date.now()),
+    color: ITEM_COLORS.indexOf(source.color) >= 0 ? source.color : 'default',
+    createdAt: createdAt,
+    updatedAt: finiteTime(source.updatedAt, createdAt),
     completedAt: done ? finiteTime(source.completedAt, Date.now()) : null,
   };
 }
@@ -68,7 +72,7 @@ export function sanitizeNote(value) {
     text: text,
     date: normalizeDate(source.date),
     fixed: source.fixed === true,
-    color: NOTE_COLORS.indexOf(source.color) >= 0 ? source.color : 'default',
+    color: ITEM_COLORS.indexOf(source.color) >= 0 ? source.color : 'default',
     createdAt: finiteTime(source.createdAt, Date.now()),
     updatedAt: finiteTime(source.updatedAt, Date.now()),
   };
@@ -80,7 +84,9 @@ function publicTodo(todo) {
     text: todo.text,
     date: todo.date,
     done: todo.done,
+    color: todo.color,
     createdAt: todo.createdAt,
+    updatedAt: todo.updatedAt,
     completedAt: todo.completedAt,
   };
 }
@@ -97,8 +103,48 @@ function publicNote(note) {
   };
 }
 
+export function sanitizeTombstones(values) {
+  if (!Array.isArray(values)) return [];
+  const byKey = new Map();
+  for (const value of values) {
+    if (!value || typeof value !== 'object') continue;
+    if (value.kind !== 'todo' && value.kind !== 'note') continue;
+    if (!validId(value.id)) continue;
+    const deletedAt = finiteTime(value.deletedAt, 0);
+    if (!deletedAt) continue;
+    const key = value.kind + ':' + value.id;
+    const previous = byKey.get(key);
+    if (!previous || deletedAt > previous.deletedAt) {
+      byKey.set(key, { kind: value.kind, id: value.id, deletedAt: deletedAt });
+    }
+  }
+  return [...byKey.values()].sort((a, b) => a.deletedAt - b.deletedAt).slice(-MAX_TOMBSTONES);
+}
+
+function removeItem(state, kind, id, deletedAt) {
+  const list = kind === 'todo' ? state.todos : kind === 'note' ? state.notes : null;
+  if (!list) throw new Error('kind must be todo or note');
+  const index = list.findIndex((item) => item.id === id);
+  if (index < 0) return false;
+  const time = finiteTime(deletedAt, Date.now());
+  state.tombstones = sanitizeTombstones(
+    state.tombstones.filter((item) => !(item.kind === kind && item.id === id)).concat({ kind, id, deletedAt: time }),
+  );
+  list.splice(index, 1);
+  return true;
+}
+
+function clearTombstone(state, kind, id) {
+  state.tombstones = state.tombstones.filter((item) => !(item.kind === kind && item.id === id));
+}
+
+function tombstoneBlocks(state, kind, id, updatedAt) {
+  const tombstone = state.tombstones.find((item) => item.kind === kind && item.id === id);
+  return Boolean(tombstone && tombstone.deletedAt >= updatedAt);
+}
+
 function freshState() {
-  return { version: VERSION, revision: 0, todos: [], notes: [], appliedOps: [] };
+  return { version: VERSION, revision: 0, todos: [], notes: [], tombstones: [], appliedOps: [] };
 }
 
 function cloneState(state) {
@@ -107,6 +153,7 @@ function cloneState(state) {
     revision: state.revision,
     todos: state.todos.map((todo) => ({ ...todo })),
     notes: state.notes.map((note) => ({ ...note })),
+    tombstones: state.tombstones.map((item) => ({ ...item })),
     appliedOps: state.appliedOps.slice(),
   };
 }
@@ -119,6 +166,7 @@ function readState(raw) {
     revision: Number.isInteger(source.revision) && source.revision >= 0 ? source.revision : 0,
     todos: Array.isArray(source.todos) ? source.todos.map((todo) => sanitizeTodo(todo)).filter(Boolean) : [],
     notes: Array.isArray(source.notes) ? source.notes.map((note) => sanitizeNote(note)).filter(Boolean) : [],
+    tombstones: sanitizeTombstones(source.tombstones),
     appliedOps: Array.isArray(source.appliedOps)
       ? source.appliedOps.filter((id) => typeof id === 'string' && id.length <= 100).slice(-MAX_APPLIED_OPS)
       : [],
@@ -183,6 +231,36 @@ export class BoardStore {
   async list() {
     await this.load();
     return this.snapshot();
+  }
+
+  syncSnapshot() {
+    if (!this.state) throw new Error('board is not loaded');
+    const state = this.state;
+    return {
+      version: state.version,
+      revision: state.revision,
+      todos: state.todos.map(publicTodo),
+      notes: state.notes.map(publicNote),
+      tombstones: state.tombstones.map((item) => ({ ...item })),
+    };
+  }
+
+  async applySync(snapshot, baseRevision) {
+    return this.mutate((state) => {
+      if (state.revision !== baseRevision) return { changed: false, value: () => ({ stale: true }) };
+      const todos = Array.isArray(snapshot && snapshot.todos)
+        ? snapshot.todos.map((todo) => sanitizeTodo(todo)).filter(Boolean)
+        : state.todos;
+      const notes = Array.isArray(snapshot && snapshot.notes)
+        ? snapshot.notes.map((note) => sanitizeNote(note)).filter(Boolean)
+        : state.notes;
+      const tombstones = sanitizeTombstones(snapshot && snapshot.tombstones);
+      state.revision = Math.max(state.revision, Number.isInteger(snapshot && snapshot.revision) ? snapshot.revision : 0);
+      state.todos = todos;
+      state.notes = notes;
+      state.tombstones = tombstones;
+      return { changed: true, value: () => ({ stale: false, snapshot: this.syncSnapshot() }) };
+    });
   }
 
   async persist() {
@@ -250,7 +328,8 @@ export class BoardStore {
           case 'addTodo': {
             const todo = sanitizeTodo(op.todo || op);
             if (!todo) throw new Error('todo text must not be empty');
-            if (!state.todos.some((item) => item.id === todo.id)) {
+            if (!state.todos.some((item) => item.id === todo.id) && !tombstoneBlocks(state, 'todo', todo.id, todo.updatedAt)) {
+              clearTombstone(state, 'todo', todo.id);
               state.todos.push(todo);
               applied = true;
             }
@@ -264,17 +343,14 @@ export class BoardStore {
             break;
           }
           case 'removeTodo': {
-            const index = state.todos.findIndex((item) => item.id === op.id);
-            if (index >= 0) {
-              state.todos.splice(index, 1);
-              applied = true;
-            }
+            applied = removeItem(state, 'todo', op.id);
             break;
           }
           case 'addNote': {
             const note = sanitizeNote(op.note || op);
             if (!note) throw new Error('note text must not be empty');
-            if (!state.notes.some((item) => item.id === note.id)) {
+            if (!state.notes.some((item) => item.id === note.id) && !tombstoneBlocks(state, 'note', note.id, note.updatedAt)) {
+              clearTombstone(state, 'note', note.id);
               state.notes.push(note);
               applied = true;
             }
@@ -286,29 +362,11 @@ export class BoardStore {
             break;
           }
           case 'removeNote': {
-            const index = state.notes.findIndex((item) => item.id === op.id);
-            if (index >= 0) {
-              state.notes.splice(index, 1);
-              applied = true;
-            }
+            applied = removeItem(state, 'note', op.id);
             break;
           }
           case 'remove': {
-            if (op.kind === 'todo') {
-              const index = state.todos.findIndex((item) => item.id === op.id);
-              if (index >= 0) {
-                state.todos.splice(index, 1);
-                applied = true;
-              }
-            } else if (op.kind === 'note') {
-              const index = state.notes.findIndex((item) => item.id === op.id);
-              if (index >= 0) {
-                state.notes.splice(index, 1);
-                applied = true;
-              }
-            } else {
-              throw new Error('remove.kind must be todo or note');
-            }
+            applied = removeItem(state, op.kind, op.id);
             break;
           }
           case 'saveFixed': {
@@ -331,6 +389,8 @@ export class BoardStore {
     if (!todo) throw new Error('todo text must not be empty');
     return this.mutate((state) => {
       if (state.todos.some((item) => item.id === todo.id)) return { changed: false, value: () => ({ todo: publicTodo(todo), revision: state.revision }) };
+      if (tombstoneBlocks(state, 'todo', todo.id, todo.updatedAt)) throw new Error('todo was deleted more recently');
+      clearTombstone(state, 'todo', todo.id);
       state.todos.push(todo);
       return { changed: true, value: () => ({ todo: publicTodo(todo), revision: state.revision }) };
     });
@@ -350,6 +410,8 @@ export class BoardStore {
     if (!note) throw new Error('note text must not be empty');
     return this.mutate((state) => {
       if (state.notes.some((item) => item.id === note.id)) return { changed: false, value: () => ({ note: publicNote(note), revision: state.revision }) };
+      if (tombstoneBlocks(state, 'note', note.id, note.updatedAt)) throw new Error('note was deleted more recently');
+      clearTombstone(state, 'note', note.id);
       state.notes.push(note);
       return { changed: true, value: () => ({ note: publicNote(note), revision: state.revision }) };
     });
@@ -366,12 +428,8 @@ export class BoardStore {
 
   async remove(kind, id) {
     return this.mutate((state) => {
-      const list = kind === 'todo' ? state.todos : kind === 'note' ? state.notes : null;
-      if (!list) throw new Error('kind must be todo or note');
-      const index = list.findIndex((item) => item.id === id);
-      if (index < 0) return { changed: false, value: () => ({ removed: false, revision: state.revision }) };
-      list.splice(index, 1);
-      return { changed: true, value: () => ({ removed: true, revision: state.revision }) };
+      const removed = removeItem(state, kind, id);
+      return { changed: removed, value: () => ({ removed: removed, revision: state.revision }) };
     });
   }
 }
@@ -390,6 +448,11 @@ function applyTodoPatch(todo, patch) {
     todo.completedAt = patch.done ? Date.now() : null;
     changed = true;
   }
+  if (ITEM_COLORS.indexOf(patch.color) >= 0 && patch.color !== todo.color) {
+    todo.color = patch.color;
+    changed = true;
+  }
+  if (changed) todo.updatedAt = Date.now();
   return changed;
 }
 
@@ -402,7 +465,7 @@ function applyNotePatch(note, patch) {
       changed = true;
     }
   }
-  if (NOTE_COLORS.indexOf(patch.color) >= 0 && patch.color !== note.color) {
+  if (ITEM_COLORS.indexOf(patch.color) >= 0 && patch.color !== note.color) {
     note.color = patch.color;
     changed = true;
   }
@@ -412,11 +475,11 @@ function applyNotePatch(note, patch) {
 
 function applyFixedNote(state, text, color) {
   const value = textValue(text, MAX_NOTE_TEXT);
-  const tint = NOTE_COLORS.indexOf(color) >= 0 ? color : 'default';
+  const tint = ITEM_COLORS.indexOf(color) >= 0 ? color : 'default';
   const existing = state.notes.find((note) => note.fixed === true);
   if (existing) {
     if (!value) {
-      state.notes = state.notes.filter((note) => note.id !== existing.id);
+      removeItem(state, 'note', existing.id);
       return true;
     }
     if (existing.text === value && existing.color === tint) return false;

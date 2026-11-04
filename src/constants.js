@@ -5,7 +5,8 @@
     const IMAGES_KEY = 'dsh.keep-notes.images.v1';
     const SYNC_KEY = 'dsh.keep-notes.sync.v1';
 
-    const NOTE_COLORS = ['default', 'yellow', 'green', 'blue', 'purple', 'red'];
+    /* One palette for notes and todos, so a colour means the same in both lists. */
+    const ITEM_COLORS = ['default', 'yellow', 'green', 'blue', 'purple', 'red'];
     /* Microsoft To Do palette: list colours for light and dark themes. */
     const TODO_PALETTE = {
       light: {
@@ -66,7 +67,7 @@
         '--dsw-alias-state-error-primary': '#F85149',
       },
     };
-    const NOTE_TINTS = {
+    const ITEM_TINTS = {
       default: '',
       yellow: 'color-mix(in srgb, var(--kn-yellow, #FFB900) 18%, transparent)',
       green: 'color-mix(in srgb, var(--kn-green, #498205) 18%, transparent)',
@@ -85,7 +86,7 @@
     const MAX_NOTE_TEXT = 20000;
     const MAX_TODO_TEXT = 1000;
     const IMAGE_SLOTS = ['header', 'todos', 'notes'];
-    const NOTE_SWATCH = {
+    const ITEM_SWATCH = {
       default: 'var(--dsw-alias-bg-layer-2)',
       yellow: 'var(--kn-yellow, #FFB900)',
       green: 'var(--kn-green, #498205)',

@@ -1,3 +1,154 @@
+    function SyncSettings(props) {
+      const { t } = props;
+      const [info, setInfo] = React.useState(null);
+      const [folder, setFolder] = React.useState('');
+      const [busy, setBusy] = React.useState(false);
+      const [message, setMessage] = React.useState('');
+
+      const request = async (method, body) => {
+        if (typeof window === 'undefined' || typeof window.fetch !== 'function') {
+          throw new Error(t('syncUnavailable'));
+        }
+        const response = await window.fetch('/dsh-keep-notes/sync', {
+          method: method,
+          cache: 'no-store',
+          credentials: 'same-origin',
+          headers: body
+            ? { accept: 'application/json', 'content-type': 'application/json' }
+            : { accept: 'application/json' },
+          body: body ? JSON.stringify(body) : undefined,
+        });
+        if (!response.ok) {
+          let detail = '';
+          try {
+            const parsed = await response.json();
+            detail = parsed && parsed.error ? String(parsed.error) : '';
+          } catch (error) {
+            detail = '';
+          }
+          throw new Error(detail || 'HTTP ' + response.status);
+        }
+        return response.json();
+      };
+
+      const load = async (fillInput) => {
+        try {
+          const next = await request('GET');
+          setInfo(next);
+          if (fillInput) setFolder(next.folder || '');
+        } catch (error) {
+          setInfo({
+            enabled: false,
+            folder: '',
+            state: 'error',
+            lastError: error && error.message ? error.message : String(error),
+            lastSyncAt: 0,
+          });
+        }
+      };
+
+      React.useEffect(() => {
+        let active = true;
+        const refresh = (fillInput) => {
+          if (!active) return;
+          load(fillInput);
+        };
+        refresh(true);
+        const timer = window.setInterval(() => refresh(false), 6000);
+        return () => {
+          active = false;
+          window.clearInterval(timer);
+        };
+      }, []);
+
+      const save = async (nextFolder) => {
+        setBusy(true);
+        setMessage('');
+        try {
+          const next = await request('POST', { folder: nextFolder });
+          setInfo(next);
+          setFolder(next.folder || '');
+          setMessage(t('syncSaved'));
+        } catch (error) {
+          setMessage(t('syncInvalid', { detail: error && error.message ? error.message : String(error) }));
+        } finally {
+          setBusy(false);
+        }
+      };
+
+      const state = info ? info.state || (info.enabled ? 'idle' : 'disabled') : 'loading';
+      const statusLabel =
+        state === 'syncing'
+          ? t('syncSyncing')
+          : state === 'error'
+            ? t('syncError')
+            : info && info.enabled
+              ? t('syncIdle')
+              : t('syncDisabled');
+      const lastSync =
+        info && info.lastSyncAt
+          ? t('syncLast', { time: new Date(info.lastSyncAt).toLocaleString() })
+          : t('syncNever');
+
+      return h(
+        'div',
+        { className: 'kn-sync' },
+        h(
+          'div',
+          { className: 'kn-sync-head' },
+          h('span', { className: 'kn-sync-title' }, t('syncTitle')),
+          h('span', { className: cx('kn-sync-badge', info && info.enabled && 'is-on') }, statusLabel),
+        ),
+        h('p', { className: 'kn-set-hint' }, t('syncHint')),
+        h(
+          'div',
+          { className: 'kn-sync-row' },
+          h('input', {
+            className: 'kn-sync-input',
+            type: 'text',
+            value: folder,
+            placeholder: t('syncFolderPlaceholder'),
+            'aria-label': t('syncFolder'),
+            spellCheck: false,
+            autoComplete: 'off',
+            onChange: (event) => setFolder(event.target.value),
+            onKeyDown: (event) => {
+              if (event.key === 'Enter' && !busy && folder.trim()) save(folder.trim());
+            },
+          }),
+          h(
+            'button',
+            {
+              type: 'button',
+              className: 'kn-btn',
+              disabled: busy || !folder.trim(),
+              onClick: () => save(folder.trim()),
+            },
+            busy ? t('processing') : t('syncEnable'),
+          ),
+        ),
+        info && info.enabled
+          ? h(
+              'button',
+              {
+                type: 'button',
+                className: 'kn-btn',
+                disabled: busy,
+                onClick: () => save(''),
+              },
+              t('syncDisable'),
+            )
+          : null,
+        h(
+          'p',
+          { className: cx('kn-sync-status', state === 'error' && 'is-error'), role: 'status', 'aria-live': 'polite' },
+          lastSync,
+          info && info.lastError ? ' · ' + info.lastError : '',
+          message ? ' · ' + message : '',
+        ),
+      );
+    }
+
     /* ------------------------------------------------------------------ */
     /* Background settings                                                 */
     /* ------------------------------------------------------------------ */
@@ -164,5 +315,6 @@
             t('clearAll'),
           ),
         ),
+        h(SyncSettings, { t: t }),
       );
     }

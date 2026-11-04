@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.3.0 — 2026-11-04
+
+- 新增共享文件夹同步：在设置里填写一个已被 OneDrive / Dropbox / Syncthing 同步的目录，Host 会把待办和便签写入 `dsh-keep-notes.board.json`，多个 DSH 实例按条目修改时间合并，不需要插件自己的云服务。
+- 新增删除墓碑和待办的 `updatedAt`：离线设备不会把已删除的条目重新带回来；固定便签在冲突时只保留最新的一条。
+- 新增 `/dsh-keep-notes/sync` 读写接口和设置面板里的同步状态/路径配置，仍使用 DSH Web 登录态鉴权。
+- 共享文件损坏、目录不可写或目标无效时，面板显示同步错误，不会静默覆盖共享数据。
+- 增加共享目录双设备、冲突合并、删除同步、墓碑持久化和“先加载本地板再写共享文件”的测试。
+- 待办支持与便签相同的五色配色，agent 的 `keep_notes_add_todo` / `keep_notes_update_todo` 也可传 `color`。
+- 修正客户端便签颜色常量引用，避免构建后 `NOTE_COLORS` 未定义。
+
 ## 1.2.0 — 2026-11-04
 
 - 接入 agent：Host 新增共享便签/待办存储与 `keep_notes_*` 工具，面板通过同源 `/dsh-keep-notes/*` 接口同步，agent 的改动会出现在面板里；Host 板为空时首次连接会自动上传原有 localStorage 数据。

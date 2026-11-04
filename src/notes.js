@@ -2,26 +2,6 @@
     /* Notes                                                               */
     /* ------------------------------------------------------------------ */
 
-    function ColorSwatches(props) {
-      const { t, value } = props;
-      return h(
-        'div',
-        { className: 'kn-swatches', role: 'group', 'aria-label': t('colors') },
-        NOTE_COLORS.map((id) =>
-          h('button', {
-            key: id,
-            type: 'button',
-            className: cx('kn-swatch', value === id && 'is-active'),
-            style: { background: NOTE_SWATCH[id] },
-            title: t('color' + cap(id)),
-            'aria-label': t('color' + cap(id)),
-            'aria-pressed': value === id,
-            onClick: () => props.onChange(id),
-          }),
-        ),
-      );
-    }
-
     function NoteCard(props) {
       const { note, t, lang } = props;
       const [editing, setEditing] = React.useState(false);
@@ -46,7 +26,7 @@
       if (editing) {
         return h(
           'article',
-          { className: 'kn-note is-editing', style: { background: NOTE_TINTS[color] } },
+          { className: 'kn-note is-editing', style: { background: ITEM_TINTS[color] } },
           h('textarea', {
             className: 'kn-note-input',
             value: draft,
@@ -82,7 +62,7 @@
 
       return h(
         'article',
-        { className: 'kn-note', style: { background: NOTE_TINTS[note.color] || NOTE_TINTS.default } },
+        { className: 'kn-note', style: { background: ITEM_TINTS[note.color] || ITEM_TINTS.default } },
         h(
           'button',
           { type: 'button', className: 'kn-note-text', title: t('editNote'), onClick: begin },
@@ -127,7 +107,7 @@
 
       return h(
         'article',
-        { className: 'kn-note is-editing', style: { background: NOTE_TINTS[color] } },
+        { className: 'kn-note is-editing', style: { background: ITEM_TINTS[color] } },
         h('textarea', {
           className: 'kn-note-input',
           value: text,
@@ -265,7 +245,7 @@
         ),
         h(
           'div',
-          { className: 'kn-fixed-body', style: { background: NOTE_TINTS[color] } },
+          { className: 'kn-fixed-body', style: { background: ITEM_TINTS[color] } },
           h('textarea', {
             className: 'kn-fixed-input',
             value: text,

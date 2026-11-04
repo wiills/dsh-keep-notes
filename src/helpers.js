@@ -14,6 +14,37 @@
       return value.charAt(0).toUpperCase() + value.slice(1);
     }
 
+    /* Shared colour picker for notes and todos. */
+    function ColorSwatches(props) {
+      const { t, value } = props;
+      return h(
+        'div',
+        { className: 'kn-swatches', role: 'group', 'aria-label': t('colors') },
+        ITEM_COLORS.map((id) =>
+          h('button', {
+            key: id,
+            type: 'button',
+            className: cx('kn-swatch', value === id && 'is-active'),
+            style: { background: ITEM_SWATCH[id] },
+            title: t('color' + cap(id)),
+            'aria-label': t('color' + cap(id)),
+            'aria-pressed': value === id,
+            onClick: () => props.onChange(id),
+          }),
+        ),
+      );
+    }
+
+    /* A tinted surface plus a matching leading edge, so a coloured item reads at
+       a glance even in a narrow day column. */
+    function itemTint(color) {
+      if (!color || color === 'default') return undefined;
+      return {
+        background: ITEM_TINTS[color],
+        boxShadow: 'inset 2px 0 0 ' + ITEM_SWATCH[color],
+      };
+    }
+
     function useBoardSlice(board, selector) {
       return React.useSyncExternalStore(board.subscribe, function read() {
         return selector(board.getSnapshot());
