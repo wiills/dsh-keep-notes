@@ -6,7 +6,7 @@
  * Host contributes nothing but the Loader row.
  */
 window.__ModuleLoader__.load({
-  id: '@local/dsh-keep-notes',
+  id: 'dsh-keep-notes',
   factory(require) {
     const React = require('react');
     const h = React.createElement;
@@ -15,6 +15,7 @@ window.__ModuleLoader__.load({
     const PANEL_ID = 'keep-notes';
     const STORAGE_KEY = 'dsh.keep-notes.board.v1';
     const APPEARANCE_KEY = 'dsh.keep-notes.appearance.v1';
+    const IMAGES_KEY = 'dsh.keep-notes.images.v1';
 
     const NOTE_COLORS = ['default', 'yellow', 'green', 'blue', 'purple', 'red'];
     /* Microsoft To Do palette: list colours for light and dark themes. */
@@ -87,7 +88,15 @@ window.__ModuleLoader__.load({
     };
     const DEFAULT_APPEARANCE = { header: '', todos: '', notes: '', dim: 0.82, mode: 'auto' };
     const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
-    const MAX_IMAGE_SIDE = 1440;
+    const MAX_IMAGE_SIDE = 1280;
+    /* Keep each background data URL and the whole image set small enough to
+       leave room for the board in the shared localStorage quota. */
+    const MAX_IMAGE_DATA_URL = 1200000;
+    const MAX_IMAGES_TOTAL = 3200000;
+    const MAX_LEGACY_IMAGE_DATA_URL = 3600000;
+    const MAX_NOTE_TEXT = 20000;
+    const MAX_TODO_TEXT = 1000;
+    const IMAGE_SLOTS = ['header', 'todos', 'notes'];
     const NOTE_SWATCH = {
       default: 'var(--dsw-alias-bg-layer-2)',
       yellow: 'var(--kn-yellow, #FFB900)',
@@ -175,7 +184,9 @@ window.__ModuleLoader__.load({
       imageSaved: '已保存',
       imageNotSaved: '本地存储空间不足，图片仅本次有效',
       imageError: '无法读取这张图片，请换一张',
-      imageTooLarge: '图片太大，请选择 10MB 以内的图片',
+      imageTooLarge: '图片太大，请选择 10MB 以内或更简单的图片',
+      storageIssue: '浏览器存储空间不足，最近的修改可能没有保存。',
+      storageDismiss: '知道了',
       crash: '便签面板渲染失败，切换页面后可重试。',
     };
 
@@ -253,7 +264,9 @@ window.__ModuleLoader__.load({
       imageSaved: 'Saved',
       imageNotSaved: 'Browser storage is full; the image applies to this session only',
       imageError: 'That image could not be read',
-      imageTooLarge: 'Choose an image under 10MB',
+      imageTooLarge: 'Choose an image under 10MB or a simpler picture',
+      storageIssue: 'Browser storage is full; recent changes may not be saved.',
+      storageDismiss: 'Dismiss',
       crash: 'The notes panel failed to render. Switch pages to retry.',
     };
 
@@ -397,7 +410,7 @@ window.__ModuleLoader__.load({
       const date = typeof value.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value.date) ? value.date : null;
       return {
         id: value.id,
-        text: value.text,
+        text: value.text.slice(0, MAX_TODO_TEXT),
         date: date,
         done: value.done === true,
         createdAt: typeof value.createdAt === 'number' ? value.createdAt : Date.now(),
@@ -411,7 +424,7 @@ window.__ModuleLoader__.load({
       const date = typeof value.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value.date) ? value.date : null;
       return {
         id: value.id,
-        text: value.text,
+        text: value.text.slice(0, MAX_NOTE_TEXT),
         date: date,
         fixed: value.fixed === true,
         color: NOTE_COLORS.indexOf(value.color) >= 0 ? value.color : 'default',
@@ -420,45 +433,100 @@ window.__ModuleLoader__.load({
       };
     }
 
-    function sanitizeAppearance(value) {
+    function sanitizeMeta(value) {
       const source = value && typeof value === 'object' ? value : {};
-      const image = (input) => (typeof input === 'string' ? input.slice(0, 3600000) : '');
       const dim =
         typeof source.dim === 'number' && source.dim >= 0.3 && source.dim <= 0.98
           ? source.dim
           : DEFAULT_APPEARANCE.dim;
       const mode = source.mode === 'dark' || source.mode === 'light' ? source.mode : 'auto';
+      return { dim: dim, mode: mode };
+    }
+
+    function sanitizeImages(value) {
+      const source = value && typeof value === 'object' ? value : {};
+      const image = (input) =>
+        typeof input === 'string' &&
+        input.indexOf('data:image/') === 0 &&
+        input.length <= MAX_LEGACY_IMAGE_DATA_URL
+          ? input
+          : '';
       return {
         header: image(source.header),
         todos: image(source.todos),
         notes: image(source.notes),
-        dim: dim,
-        mode: mode,
+      };
+    }
+
+    function hasImages(appearance) {
+      return Boolean(appearance.header || appearance.todos || appearance.notes);
+    }
+
+    function readStoredImages() {
+      try {
+        const raw = window.localStorage.getItem(IMAGES_KEY);
+        if (!raw) return null;
+        return sanitizeImages(JSON.parse(raw));
+      } catch (error) {
+        return null;
+      }
+    }
+
+    function loadAppearance(fallback) {
+      let meta = null;
+      try {
+        const raw = window.localStorage.getItem(APPEARANCE_KEY);
+        if (raw) meta = JSON.parse(raw);
+      } catch (error) {
+        meta = null;
+      }
+      const fromFallback = !meta && Boolean(fallback);
+      const source = meta || fallback || null;
+      const storedImages = readStoredImages();
+      if (storedImages) {
+        return {
+          appearance: Object.assign({}, sanitizeMeta(source), storedImages),
+          imagesPersisted: true,
+          fromFallback: fromFallback,
+        };
+      }
+      const images = sanitizeImages(source);
+      return {
+        appearance: Object.assign({}, sanitizeMeta(source), images),
+        imagesPersisted: !hasImages(images),
+        fromFallback: fromFallback,
       };
     }
 
     function readBoard(lang) {
       let stored = null;
+      let storageIssue = false;
       try {
         const raw = window.localStorage.getItem(STORAGE_KEY);
         if (raw) stored = JSON.parse(raw);
       } catch (error) {
         stored = null;
+        storageIssue = true;
       }
 
-      let appearance = null;
-      try {
-        const rawAppearance = window.localStorage.getItem(APPEARANCE_KEY);
-        if (rawAppearance) appearance = JSON.parse(rawAppearance);
-      } catch (error) {
-        appearance = null;
-      }
-      if (!appearance && stored && stored.appearance) {
-        appearance = stored.appearance;
+      const loaded = loadAppearance(stored && stored.appearance);
+      let legacyAppearance = false;
+      if (loaded.fromFallback) {
         try {
-          window.localStorage.setItem(APPEARANCE_KEY, JSON.stringify(appearance));
+          const payload = loaded.imagesPersisted
+            ? { version: 3, dim: loaded.appearance.dim, mode: loaded.appearance.mode }
+            : {
+                version: 3,
+                dim: loaded.appearance.dim,
+                mode: loaded.appearance.mode,
+                header: loaded.appearance.header,
+                todos: loaded.appearance.todos,
+                notes: loaded.appearance.notes,
+              };
+          window.localStorage.setItem(APPEARANCE_KEY, JSON.stringify(payload));
         } catch (error) {
-          /* A legacy appearance stays in memory when the migration write fails. */
+          storageIssue = true;
+          legacyAppearance = true;
         }
       }
 
@@ -466,7 +534,10 @@ window.__ModuleLoader__.load({
         return {
           todos: Array.isArray(stored.todos) ? stored.todos.map(sanitizeTodo).filter(Boolean) : [],
           notes: Array.isArray(stored.notes) ? stored.notes.map(sanitizeNote).filter(Boolean) : [],
-          appearance: sanitizeAppearance(appearance),
+          appearance: loaded.appearance,
+          imagesPersisted: loaded.imagesPersisted,
+          storageIssue: storageIssue,
+          legacyAppearance: legacyAppearance,
         };
       }
 
@@ -477,37 +548,116 @@ window.__ModuleLoader__.load({
           JSON.stringify({ version: 2, todos: seeded.todos, notes: seeded.notes }),
         );
       } catch (error) {
-        /* The first-run board still renders when storage rejects the write. */
+        storageIssue = true;
       }
-      return { todos: seeded.todos, notes: seeded.notes, appearance: sanitizeAppearance(appearance) };
+      return {
+        todos: seeded.todos,
+        notes: seeded.notes,
+        appearance: loaded.appearance,
+        imagesPersisted: loaded.imagesPersisted,
+        storageIssue: storageIssue,
+        legacyAppearance: legacyAppearance,
+      };
     }
 
     function createBoard(lang) {
-      let state = readBoard(lang);
-      let writtenAppearance = state.appearance;
+      const loaded = readBoard(lang);
+      let state = {
+        todos: loaded.todos,
+        notes: loaded.notes,
+        appearance: loaded.appearance,
+        storageIssue: loaded.storageIssue,
+      };
+      let imagesPersisted = loaded.imagesPersisted;
+      let legacyAppearance = loaded.legacyAppearance;
+      let writtenMeta = { dim: state.appearance.dim, mode: state.appearance.mode };
       const listeners = new Set();
 
-      const commit = (next) => {
-        const appearanceChanged = next.appearance !== writtenAppearance;
-        state = next;
-        let persisted = true;
+      const notify = () => listeners.forEach((listener) => listener());
+
+      const writeBoard = () => {
+        try {
+          const payload = { version: 2, todos: state.todos, notes: state.notes };
+          if (legacyAppearance) payload.appearance = state.appearance;
+          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+          return true;
+        } catch (error) {
+          return false;
+        }
+      };
+
+      const writeImages = (appearance) => {
+        const payload = {
+          version: 3,
+          header: appearance.header || '',
+          todos: appearance.todos || '',
+          notes: appearance.notes || '',
+        };
+        const raw = JSON.stringify(payload);
+        if (raw.length > MAX_IMAGES_TOTAL) return false;
+        try {
+          window.localStorage.setItem(IMAGES_KEY, raw);
+          return true;
+        } catch (error) {
+          return false;
+        }
+      };
+
+      const writeMeta = (appearance) => {
         try {
           window.localStorage.setItem(
-            STORAGE_KEY,
-            JSON.stringify({ version: 2, todos: state.todos, notes: state.notes }),
+            APPEARANCE_KEY,
+            JSON.stringify({ version: 3, dim: appearance.dim, mode: appearance.mode }),
           );
+          return true;
         } catch (error) {
-          persisted = false;
+          return false;
         }
-        if (appearanceChanged) {
-          writtenAppearance = state.appearance;
+      };
+
+      const persistAppearance = (appearance) => {
+        let ok = true;
+        if (!hasImages(appearance)) imagesPersisted = true;
+        if (!imagesPersisted) {
+          if (writeImages(appearance)) imagesPersisted = true;
+          else ok = false;
+        }
+        if (imagesPersisted) {
+          if (!writeMeta(appearance)) ok = false;
+        } else {
+          /* A legacy user without room for the split keys keeps the combined
+             shape, which is the only complete copy of the images. */
           try {
-            window.localStorage.setItem(APPEARANCE_KEY, JSON.stringify(state.appearance));
+            window.localStorage.setItem(
+              APPEARANCE_KEY,
+              JSON.stringify({
+                version: 3,
+                dim: appearance.dim,
+                mode: appearance.mode,
+                header: appearance.header || '',
+                todos: appearance.todos || '',
+                notes: appearance.notes || '',
+              }),
+            );
+            ok = true;
           } catch (error) {
-            persisted = false;
+            ok = false;
           }
         }
-        listeners.forEach((listener) => listener());
+        if (ok) legacyAppearance = false;
+        return ok;
+      };
+
+      const commit = (next) => {
+        state = { ...state, ...next };
+        let persisted = writeBoard();
+        const meta = { dim: state.appearance.dim, mode: state.appearance.mode };
+        if (meta.dim !== writtenMeta.dim || meta.mode !== writtenMeta.mode) {
+          if (persistAppearance(state.appearance)) writtenMeta = meta;
+          else persisted = false;
+        }
+        state = { ...state, storageIssue: state.storageIssue || !persisted };
+        notify();
         return persisted;
       };
 
@@ -525,34 +675,34 @@ window.__ModuleLoader__.load({
           };
         },
         addTodo(date, text) {
-          const value = String(text || '').trim();
-          if (!value) return;
-          updateTodos((todos) =>
+          const value = String(text || '').trim().slice(0, MAX_TODO_TEXT);
+          if (!value) return false;
+          return updateTodos((todos) =>
             todos.concat([
               { id: newId('t'), text: value, date: date, done: false, createdAt: Date.now(), completedAt: null },
             ]),
           );
         },
         toggleTodo(id) {
-          updateTodos((todos) =>
+          return updateTodos((todos) =>
             todos.map((todo) =>
               todo.id === id ? { ...todo, done: !todo.done, completedAt: todo.done ? null : Date.now() } : todo,
             ),
           );
         },
         renameTodo(id, text) {
-          const value = String(text || '').trim();
-          if (!value) return;
-          updateTodos((todos) => todos.map((todo) => (todo.id === id ? { ...todo, text: value } : todo)));
+          const value = String(text || '').trim().slice(0, MAX_TODO_TEXT);
+          if (!value) return false;
+          return updateTodos((todos) => todos.map((todo) => (todo.id === id ? { ...todo, text: value } : todo)));
         },
         removeTodo(id) {
-          updateTodos((todos) => todos.filter((todo) => todo.id !== id));
+          return updateTodos((todos) => todos.filter((todo) => todo.id !== id));
         },
         addNote(date, fixed, color, text) {
-          const value = String(text || '').trim();
-          if (!value) return;
+          const value = String(text || '').trim().slice(0, MAX_NOTE_TEXT);
+          if (!value) return false;
           const now = Date.now();
-          updateNotes((notes) =>
+          return updateNotes((notes) =>
             notes.concat([
               {
                 id: newId('n'),
@@ -567,40 +717,97 @@ window.__ModuleLoader__.load({
           );
         },
         updateNote(id, patch) {
-          updateNotes((notes) =>
-            notes.map((note) => (note.id === id ? { ...note, ...patch, updatedAt: Date.now() } : note)),
+          const nextPatch = { ...patch };
+          if (typeof nextPatch.text === 'string') nextPatch.text = nextPatch.text.slice(0, MAX_NOTE_TEXT);
+          return updateNotes((notes) =>
+            notes.map((note) => (note.id === id ? { ...note, ...nextPatch, updatedAt: Date.now() } : note)),
           );
         },
         removeNote(id) {
-          updateNotes((notes) => notes.filter((note) => note.id !== id));
+          return updateNotes((notes) => notes.filter((note) => note.id !== id));
         },
         saveFixed(text, color) {
-          const value = String(text || '').trim();
+          const value = String(text || '').trim().slice(0, MAX_NOTE_TEXT);
           const tint = NOTE_COLORS.indexOf(color) >= 0 ? color : 'default';
           const existing = state.notes.find((note) => note.fixed === true);
           if (existing) {
-            if (existing.text === value && existing.color === tint) return;
-            updateNotes((notes) =>
+            if (!value) return updateNotes((notes) => notes.filter((note) => note.id !== existing.id));
+            if (existing.text === value && existing.color === tint) return true;
+            return updateNotes((notes) =>
               notes.map((note) =>
                 note.id === existing.id ? { ...note, text: value, color: tint, updatedAt: Date.now() } : note,
               ),
             );
-            return;
           }
-          if (!value) return;
+          if (!value) return true;
           const now = Date.now();
-          updateNotes((notes) =>
+          return updateNotes((notes) =>
             notes.concat([
               { id: newId('n'), text: value, date: null, fixed: true, color: tint, createdAt: now, updatedAt: now },
             ]),
           );
         },
         setAppearance(patch) {
-          const next = { ...state.appearance };
-          Object.keys(patch || {}).forEach((key) => {
-            if (Object.prototype.hasOwnProperty.call(DEFAULT_APPEARANCE, key)) next[key] = patch[key];
+          const nextMeta = sanitizeMeta(Object.assign({}, state.appearance, patch || {}));
+          if (nextMeta.dim === state.appearance.dim && nextMeta.mode === state.appearance.mode) return true;
+          const appearance = Object.assign({}, state.appearance, {
+            dim: nextMeta.dim,
+            mode: nextMeta.mode,
           });
-          return commit({ ...state, appearance: sanitizeAppearance(next) });
+          state = { ...state, appearance: appearance };
+          const persisted = persistAppearance(appearance);
+          if (persisted) writtenMeta = nextMeta;
+          state = { ...state, storageIssue: state.storageIssue || !persisted };
+          notify();
+          return persisted;
+        },
+        setImage(slot, dataUrl) {
+          if (IMAGE_SLOTS.indexOf(slot) < 0) return false;
+          const value = typeof dataUrl === 'string' ? dataUrl : '';
+          if (!value || value.length > MAX_IMAGE_DATA_URL) return false;
+          const appearance = Object.assign({}, state.appearance, { [slot]: value });
+          const stored = writeImages(appearance);
+          if (stored) imagesPersisted = true;
+          state = { ...state, appearance: appearance, storageIssue: state.storageIssue || !stored };
+          if (stored) {
+            const metaOk = writeMeta(appearance);
+            state = { ...state, storageIssue: state.storageIssue || !metaOk };
+            if (metaOk) legacyAppearance = false;
+          }
+          notify();
+          return stored;
+        },
+        clearImage(slot) {
+          if (IMAGE_SLOTS.indexOf(slot) < 0) return false;
+          const appearance = Object.assign({}, state.appearance, { [slot]: '' });
+          const stored = writeImages(appearance);
+          if (stored) imagesPersisted = true;
+          state = { ...state, appearance: appearance, storageIssue: state.storageIssue || !stored };
+          if (stored) {
+            const metaOk = writeMeta(appearance);
+            state = { ...state, storageIssue: state.storageIssue || !metaOk };
+            if (metaOk) legacyAppearance = false;
+          }
+          notify();
+          return stored;
+        },
+        clearImages() {
+          const appearance = Object.assign({}, state.appearance, { header: '', todos: '', notes: '' });
+          const stored = writeImages(appearance);
+          if (stored) imagesPersisted = true;
+          state = { ...state, appearance: appearance, storageIssue: state.storageIssue || !stored };
+          if (stored) {
+            const metaOk = writeMeta(appearance);
+            state = { ...state, storageIssue: state.storageIssue || !metaOk };
+            if (metaOk) legacyAppearance = false;
+          }
+          notify();
+          return stored;
+        },
+        dismissStorageIssue() {
+          if (!state.storageIssue) return;
+          state = { ...state, storageIssue: false };
+          notify();
         },
       };
     }
@@ -645,13 +852,31 @@ window.__ModuleLoader__.load({
           try {
             const width = image.naturalWidth || image.width;
             const height = image.naturalHeight || image.height;
-            const scale = Math.min(1, MAX_IMAGE_SIDE / Math.max(width, height));
-            const canvas = document.createElement('canvas');
-            canvas.width = Math.max(1, Math.round(width * scale));
-            canvas.height = Math.max(1, Math.round(height * scale));
-            const context = canvas.getContext('2d');
-            context.drawImage(image, 0, 0, canvas.width, canvas.height);
-            onReady(canvas.toDataURL('image/jpeg', 0.82));
+            const attempts = [
+              [MAX_IMAGE_SIDE, 0.8],
+              [1024, 0.7],
+              [800, 0.6],
+            ];
+            for (let index = 0; index < attempts.length; index += 1) {
+              const side = attempts[index][0];
+              const quality = attempts[index][1];
+              const scale = Math.min(1, side / Math.max(width, height));
+              const canvas = document.createElement('canvas');
+              canvas.width = Math.max(1, Math.round(width * scale));
+              canvas.height = Math.max(1, Math.round(height * scale));
+              const context = canvas.getContext('2d');
+              if (!context) {
+                onError('encode');
+                return;
+              }
+              context.drawImage(image, 0, 0, canvas.width, canvas.height);
+              const dataUrl = canvas.toDataURL('image/jpeg', quality);
+              if (dataUrl.length <= MAX_IMAGE_DATA_URL) {
+                onReady(dataUrl);
+                return;
+              }
+            }
+            onError('size');
           } catch (error) {
             onError('encode');
           }
@@ -773,6 +998,7 @@ window.__ModuleLoader__.load({
           className: 'kn-add-input',
           type: 'text',
           value: text,
+          maxLength: MAX_TODO_TEXT,
           placeholder: props.placeholder,
           'aria-label': props.label,
           onChange: (event) => setText(event.target.value),
@@ -811,6 +1037,7 @@ window.__ModuleLoader__.load({
             className: 'kn-todo-edit',
             type: 'text',
             value: draft,
+            maxLength: MAX_TODO_TEXT,
             autoFocus: true,
             'aria-label': t('editTodo'),
             onChange: (event) => setDraft(event.target.value),
@@ -1261,6 +1488,7 @@ window.__ModuleLoader__.load({
           h('textarea', {
             className: 'kn-note-input',
             value: draft,
+            maxLength: MAX_NOTE_TEXT,
             autoFocus: true,
             placeholder: t('notePlaceholder'),
             'aria-label': t('notePlaceholder'),
@@ -1341,6 +1569,7 @@ window.__ModuleLoader__.load({
         h('textarea', {
           className: 'kn-note-input',
           value: text,
+          maxLength: MAX_NOTE_TEXT,
           autoFocus: true,
           placeholder: t('notePlaceholder'),
           'aria-label': t('notePlaceholder'),
@@ -1427,9 +1656,41 @@ window.__ModuleLoader__.load({
       );
 
       const save = () => {
-        props.onSave(text, color);
-        dirty.current = false;
+        const stored = props.onSave(text, color);
+        dirty.current = stored === false;
       };
+      const saveRef = React.useRef(save);
+      saveRef.current = save;
+
+      React.useEffect(
+        function autosave() {
+          if (!dirty.current) return undefined;
+          const timer = setTimeout(() => {
+            if (dirty.current) saveRef.current();
+          }, 500);
+          return () => clearTimeout(timer);
+        },
+        [text, color],
+      );
+
+      React.useEffect(
+        function flushOnHide() {
+          const flush = () => {
+            if (dirty.current) saveRef.current();
+          };
+          const onVisibility = () => {
+            if (document.visibilityState === 'hidden') flush();
+          };
+          window.addEventListener('pagehide', flush);
+          document.addEventListener('visibilitychange', onVisibility);
+          return () => {
+            window.removeEventListener('pagehide', flush);
+            document.removeEventListener('visibilitychange', onVisibility);
+            flush();
+          };
+        },
+        [],
+      );
 
       return h(
         'aside',
@@ -1446,6 +1707,7 @@ window.__ModuleLoader__.load({
           h('textarea', {
             className: 'kn-fixed-input',
             value: text,
+            maxLength: MAX_NOTE_TEXT,
             placeholder: t('fixedPlaceholder'),
             'aria-label': t('fixedNote'),
             onChange: (event) => {
@@ -1465,9 +1727,9 @@ window.__ModuleLoader__.load({
           t: t,
           value: color,
           onChange: (id) => {
+            const stored = props.onSave(text, id);
             setColor(id);
-            props.onSave(text, id);
-            dirty.current = false;
+            dirty.current = stored === false;
           },
         }),
         note
@@ -1487,7 +1749,7 @@ window.__ModuleLoader__.load({
     /* ------------------------------------------------------------------ */
 
     function BackgroundSettings(props) {
-      const { t, appearance, onChange, onClose } = props;
+      const { t, appearance, onChange, onSetImage, onClearImage, onClearImages, onClose } = props;
       const [status, setStatus] = React.useState('');
       const [pending, setPending] = React.useState('');
       const [dim, setDim] = React.useState(appearance.dim);
@@ -1510,7 +1772,7 @@ window.__ModuleLoader__.load({
         readImageFile(
           file,
           (dataUrl) => {
-            const saved = onChange({ [slot]: dataUrl });
+            const saved = onSetImage(slot, dataUrl);
             setPending('');
             setStatus(saved ? t('imageSaved') : t('imageNotSaved'));
           },
@@ -1600,7 +1862,7 @@ window.__ModuleLoader__.load({
               appearance[row.slot]
                 ? h(
                     'button',
-                    { type: 'button', className: 'kn-btn', onClick: () => onChange({ [row.slot]: '' }) },
+                    { type: 'button', className: 'kn-btn', onClick: () => onClearImage(row.slot) },
                     t('clearImage'),
                   )
                 : null,
@@ -1637,7 +1899,7 @@ window.__ModuleLoader__.load({
               disabled: !appearance.header && !appearance.todos && !appearance.notes,
               onClick: () => {
                 setStatus('');
-                onChange({ header: '', todos: '', notes: '' });
+                onClearImages();
               },
             },
             t('clearAll'),
@@ -1680,6 +1942,7 @@ window.__ModuleLoader__.load({
       const todos = useBoardSlice(board, (snapshot) => snapshot.todos);
       const notes = useBoardSlice(board, (snapshot) => snapshot.notes);
       const appearance = useBoardSlice(board, (snapshot) => snapshot.appearance);
+      const storageIssue = useBoardSlice(board, (snapshot) => snapshot.storageIssue);
       const lang = t('lang');
       const today = todayIso();
       const [view, setView] = React.useState('week');
@@ -1853,6 +2116,9 @@ window.__ModuleLoader__.load({
                         t: t,
                         appearance: appearance,
                         onChange: (patch) => board.setAppearance(patch),
+                        onSetImage: (slot, dataUrl) => board.setImage(slot, dataUrl),
+                        onClearImage: (slot) => board.clearImage(slot),
+                        onClearImages: () => board.clearImages(),
                         onClose: () => setSettingsOpen(false),
                       })
                     : null,
@@ -1874,6 +2140,22 @@ window.__ModuleLoader__.load({
             h(ActivityHeatmap, { todos: todos, notes: notes, t: t, lang: lang, scheme: activeScheme }),
           ),
         ),
+        storageIssue
+          ? h(
+              'div',
+              { className: 'kn-storage', role: 'status' },
+              h('span', { className: 'kn-storage-text' }, t('storageIssue')),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'kn-btn kn-storage-dismiss',
+                  onClick: () => board.dismissStorageIssue(),
+                },
+                t('storageDismiss'),
+              ),
+            )
+          : null,
         h(
           'section',
           {
@@ -2607,6 +2889,19 @@ window.__ModuleLoader__.load({
   color: var(--dsw-alias-label-secondary);
   font-variant-numeric: tabular-nums;
 }
+.kn-storage {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--dsw-alias-state-warn-primary);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 10%, var(--dsw-alias-bg-layer-1));
+  color: var(--dsw-alias-label-primary);
+  font-size: 11.5px;
+}
+.kn-storage-text { flex: 1 1 auto; min-width: 0; }
+.kn-storage-dismiss { flex: 0 0 auto; }
 .kn-fallback { padding: 24px; font-size: 12px; color: var(--dsw-alias-label-secondary); }
 @media (max-width: 980px) {
   .kn-notes-body { flex-wrap: wrap; }

@@ -61,8 +61,8 @@ git+https://github.com/wiills/dsh-keep-notes.git#v1.1.0
 
 ## 数据与隐私
 
-- 全部数据保存在浏览器 `localStorage`：`dsh.keep-notes.board.v1`、`dsh.keep-notes.appearance.v1`。
-- 背景图在本机压缩（最长边 ≤ 1440px 的 JPEG）后写入 `localStorage`，不会上传。
+- 全部数据保存在浏览器 `localStorage`：`dsh.keep-notes.board.v1`、`dsh.keep-notes.appearance.v1`、`dsh.keep-notes.images.v1`。
+- 背景图在本机压缩（最长边 ≤ 1280px 的 JPEG）后写入 `localStorage`，不会上传；图片与文字都有大小上限，存储不足时面板会提示。
 - 插件不发起任何网络请求，不收集遥测。
 
 ## 兼容性
