@@ -146,7 +146,7 @@ window.__ModuleLoader__.load({
       complete: '标记完成',
       reopen: '标记未完成',
       editTodo: '编辑待办',
-      editTodoHint: '双击编辑',
+      editTodoHint: '点击编辑',
       doneOf: '{done}/{total} 已完成',
       moreCount: '还有 {count} 项',
       emptyTodos: '暂无待办',
@@ -226,7 +226,7 @@ window.__ModuleLoader__.load({
       complete: 'Mark done',
       reopen: 'Mark not done',
       editTodo: 'Edit todo',
-      editTodoHint: 'Double-click to edit',
+      editTodoHint: 'Click to edit',
       doneOf: '{done}/{total} done',
       moreCount: '+{count} more',
       emptyTodos: 'No todos',
@@ -365,7 +365,7 @@ window.__ModuleLoader__.load({
 
     const SEED = {
       zh: {
-        todo1: '双击待办文字可以改名',
+        todo1: '点击待办文字可以改名',
         todo2: '点击圆圈即可标记完成',
         todo3: '切到「月视图」查看整月安排',
         todoGlobal: '全局待办固定在左侧，不随日期变化',
@@ -374,7 +374,7 @@ window.__ModuleLoader__.load({
         note3: '这是最右侧的固定便签，随时记一笔。',
       },
       en: {
-        todo1: 'Double-click a todo to rename it',
+        todo1: 'Click a todo to rename it',
         todo2: 'Click the circle to mark it done',
         todo3: 'Switch to Month to see the whole month',
         todoGlobal: 'Global todos stay pinned on the left',
@@ -1071,8 +1071,14 @@ window.__ModuleLoader__.load({
           todo.done ? h(CheckMark, null) : null,
         ),
         h(
-          'span',
-          { className: 'kn-todo-text', title: t('editTodoHint'), onDoubleClick: begin },
+          'button',
+          {
+            type: 'button',
+            className: 'kn-todo-text',
+            title: t('editTodoHint'),
+            'aria-label': t('editTodo') + ': ' + todo.text,
+            onClick: begin,
+          },
           todo.text,
         ),
         h(
@@ -1120,8 +1126,19 @@ window.__ModuleLoader__.load({
           onClick: () => props.onSelect(iso),
         },
         h(
-          'div',
-          { className: 'kn-col-head' },
+          'button',
+          {
+            type: 'button',
+            className: 'kn-col-head',
+            onClick: (event) => {
+              event.stopPropagation();
+              props.onSelect(iso);
+            },
+            'aria-pressed': props.isSelected,
+            'aria-label':
+              formatDate(lang, iso, { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }) +
+              (props.isToday ? ' · ' + t('today') : ''),
+          },
           h('span', { className: 'kn-col-weekday' }, formatDate(lang, iso, { weekday: 'short' })),
           props.isToday ? h('span', { className: 'kn-today-badge' }, t('today')) : null,
           h('span', { className: 'kn-col-date' }, formatDate(lang, iso, { month: 'short', day: 'numeric' })),
@@ -1248,7 +1265,26 @@ window.__ModuleLoader__.load({
               h(
                 'div',
                 { className: 'kn-cell-head' },
-                h('span', { className: 'kn-cell-day' }, String(parseIso(iso).getDate())),
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'kn-cell-day',
+                    onClick: (event) => {
+                      event.stopPropagation();
+                      props.onSelect(iso);
+                    },
+                    'aria-pressed': iso === selected,
+                    'aria-label':
+                      formatDate(lang, iso, {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        weekday: 'long',
+                      }) + (iso === today ? ' · ' + t('today') : ''),
+                  },
+                  String(parseIso(iso).getDate()),
+                ),
                 list.length > 0 ? h('span', { className: 'kn-cell-count' }, String(list.length)) : null,
               ),
               h(
@@ -1397,17 +1433,21 @@ window.__ModuleLoader__.load({
           const iso = addDays(columnStart, day);
           const future = iso > today;
           const count = counts.get(iso) || 0;
+          const label = future
+            ? ''
+            : t('activityCell', {
+                date: formatDate(lang, iso, { month: 'short', day: 'numeric' }),
+                count: count,
+              });
           cells.push(
             h('span', {
               key: iso,
               className: future ? 'kn-heat-cell is-future' : 'kn-heat-cell',
               style: future ? undefined : heatStyle(heatLevel(count, maxCount), scheme),
-              title: future
-                ? undefined
-                : t('activityCell', {
-                    date: formatDate(lang, iso, { month: 'short', day: 'numeric' }),
-                    count: count,
-                  }),
+              role: future ? undefined : 'img',
+              'aria-label': future ? undefined : label,
+              'aria-hidden': future ? true : undefined,
+              title: future ? undefined : label,
             }),
           );
         }
@@ -1424,10 +1464,15 @@ window.__ModuleLoader__.load({
           h('span', { className: 'kn-heat-total' }, t('activityTotal', { count: total })),
           h(
             'div',
-            { className: 'kn-heat-legend' },
+            { className: 'kn-heat-legend', 'aria-hidden': true },
             h('span', null, t('less')),
             [0, 1, 2, 3, 4].map((level) =>
-              h('span', { key: String(level), className: 'kn-heat-cell', style: heatStyle(level, scheme) }),
+              h('span', {
+                key: String(level),
+                className: 'kn-heat-cell',
+                style: heatStyle(level, scheme),
+                'aria-hidden': true,
+              }),
             ),
             h('span', null, t('more')),
           ),
@@ -1791,11 +1836,16 @@ window.__ModuleLoader__.load({
 
       return h(
         'div',
-        { className: 'kn-settings', role: 'dialog', 'aria-label': t('settings') },
+        {
+          className: 'kn-settings',
+          id: 'keep-notes-settings',
+          role: 'dialog',
+          'aria-labelledby': 'keep-notes-settings-title',
+        },
         h(
           'div',
           { className: 'kn-set-head' },
-          h('span', { className: 'kn-set-title' }, t('settings')),
+          h('span', { className: 'kn-set-title', id: 'keep-notes-settings-title' }, t('settings')),
           h(
             'button',
             {
@@ -1887,7 +1937,7 @@ window.__ModuleLoader__.load({
           }),
           h('span', { className: 'kn-set-value' }, Math.round(dim * 100) + '%'),
         ),
-        status ? h('p', { className: 'kn-set-status' }, status) : null,
+        status ? h('p', { className: 'kn-set-status', role: 'status', 'aria-live': 'polite' }, status) : null,
         h(
           'div',
           { className: 'kn-set-foot' },
@@ -2096,6 +2146,8 @@ window.__ModuleLoader__.load({
                       title: t('settings'),
                       'aria-label': t('settings'),
                       'aria-expanded': settingsOpen,
+                      'aria-haspopup': 'dialog',
+                      'aria-controls': 'keep-notes-settings',
                       onClick: () => setSettingsOpen((open) => !open),
                     },
                     h(
@@ -2572,7 +2624,22 @@ window.__ModuleLoader__.load({
 .kn-set-label { flex: 1 1 auto; min-width: 0; font-size: 11.5px; }
 .kn-set-actions { display: flex; gap: 6px; flex: 0 0 auto; }
 .kn-file-btn { position: relative; cursor: pointer; }
-.kn-hidden-file { display: none; }
+.kn-file-btn:focus-within {
+  outline: 2px solid var(--kn-blue, var(--dsw-alias-brand-primary));
+  outline-offset: 1px;
+}
+.kn-hidden-file {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
 .kn-set-dim {
   display: flex;
   align-items: center;
@@ -2643,6 +2710,23 @@ window.__ModuleLoader__.load({
   color: var(--kn-blue, #2564CF);
 }
 .kn-col-head { display: flex; align-items: center; gap: 6px; padding-bottom: 5px; border-bottom: 1px solid var(--dsw-alias-border-l1); }
+button.kn-col-head {
+  width: 100%;
+  padding: 0 0 5px;
+  border: 0;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
+}
+button.kn-col-head:focus-visible {
+  outline: 2px solid var(--kn-blue, var(--dsw-alias-brand-primary));
+  outline-offset: 2px;
+}
 .kn-col-weekday { font-size: 12px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .kn-col-date { margin-left: auto; font-size: 11px; color: var(--dsw-alias-label-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .kn-today-badge {
@@ -2678,6 +2762,23 @@ window.__ModuleLoader__.load({
 .kn-check:hover { border-color: var(--kn-blue, #2564CF); }
 .kn-todo.is-done .kn-check { border-color: var(--kn-blue, #2564CF); background: var(--kn-blue, #2564CF); }
 .kn-todo-text { flex: 1 1 auto; min-width: 0; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+button.kn-todo-text {
+  display: block;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: text;
+  appearance: none;
+}
+button.kn-todo-text:focus-visible {
+  outline: 2px solid var(--kn-blue, var(--dsw-alias-brand-primary));
+  outline-offset: 1px;
+}
 .kn-todo.is-done .kn-todo-text { color: var(--dsw-alias-label-secondary); text-decoration: line-through; }
 .kn-todo-edit {
   flex: 1 1 auto;
@@ -2721,6 +2822,13 @@ window.__ModuleLoader__.load({
   outline: none;
 }
 .kn-add-input::placeholder { color: var(--dsw-alias-label-secondary); }
+.kn-add-input:focus-visible,
+.kn-note-input:focus-visible,
+.kn-fixed-input:focus-visible {
+  outline: 2px solid var(--kn-blue, var(--dsw-alias-brand-primary));
+  outline-offset: 1px;
+  border-radius: 4px;
+}
 .kn-month {
   flex: 1 1 auto;
   min-width: 0;
@@ -2755,6 +2863,23 @@ window.__ModuleLoader__.load({
 .kn-cell.is-selected { background: var(--dsw-alias-bg-layer-2); border-color: var(--kn-blue, var(--dsw-alias-brand-primary)); }
 .kn-cell-head { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
 .kn-cell-day { font-size: 11.5px; font-weight: 650; font-variant-numeric: tabular-nums; }
+button.kn-cell-day {
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  appearance: none;
+}
+button.kn-cell-day:focus-visible {
+  outline: 2px solid var(--kn-blue, var(--dsw-alias-brand-primary));
+  outline-offset: 1px;
+}
 .kn-cell.is-today .kn-cell-day { color: var(--kn-blue, var(--dsw-alias-brand-primary)); }
 .kn-cell-count { font-size: 10px; color: var(--dsw-alias-label-secondary); font-variant-numeric: tabular-nums; }
 .kn-cell-items { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
@@ -2790,6 +2915,11 @@ window.__ModuleLoader__.load({
   opacity: 0;
 }
 .kn-cell:hover .kn-cell-add { opacity: 1; }
+.kn-cell-add:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--kn-blue, var(--dsw-alias-brand-primary));
+  outline-offset: 1px;
+}
 .kn-notes-body { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 12px; min-width: 0; }
 .kn-zone { display: flex; flex-direction: column; gap: 7px; min-width: 0; flex: 1 1 260px; }
 .kn-zone-cal { flex: 1.35 1 300px; }
@@ -2911,6 +3041,10 @@ window.__ModuleLoader__.load({
 }
 .kn-storage-text { flex: 1 1 auto; min-width: 0; }
 .kn-storage-dismiss { flex: 0 0 auto; }
+.kn-root :where(button, input, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--kn-blue, var(--dsw-alias-brand-primary));
+  outline-offset: 2px;
+}
 .kn-fallback { padding: 24px; font-size: 12px; color: var(--dsw-alias-label-secondary); }
 @media (max-width: 980px) {
   .kn-notes-body { flex-wrap: wrap; }

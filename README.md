@@ -1,5 +1,7 @@
 # 便签与待办 · dsh-keep-notes
 
+[![CI](https://github.com/wiills/dsh-keep-notes/actions/workflows/ci.yml/badge.svg)](https://github.com/wiills/dsh-keep-notes/actions/workflows/ci.yml)
+
 Keep 风格的便签、按日历排布的待办清单，以及 GitHub 风格的活动热力图。整个功能独立占据 DSH 左侧栏的一个页面。
 
 **安装**：DSH → Plugins → 安装对话框，粘贴 `git+https://github.com/wiills/dsh-keep-notes.git#v1.1.0`，装好后刷新页面。
@@ -54,7 +56,7 @@ git+https://github.com/wiills/dsh-keep-notes.git#v1.1.0
 
 - **7 天 / 月视图**：标题栏工具行切换；回到今天点迷你月历里的今天，或便签区右侧的「今天」。
 - **新建待办**：点任意日期列底部的「+ 待办」。
-- **完成待办**：点左侧圆圈；双击文字可以改名。
+- **完成待办**：点左侧圆圈；点击文字可以改名。
 - **新建便签**：点「+ 新建便签」；便签底部圆点切换颜色。
 - **固定便签**：最右栏，输入即自动保存。
 - **设置**：齿轮在「7 天 / 月视图」右侧，可切换背景（自动 / 黑 / 白）、换背景图、调遮罩强度；点击空白处或按 Esc 关闭。
@@ -74,6 +76,7 @@ git+https://github.com/wiills/dsh-keep-notes.git#v1.1.0
 
 ```bash
 npm run check          # node --check
+npm test               # Node 原生测试（test/board.test.mjs）
 npm pack --dry-run     # 查看发布内容
 npm run validate:index # 校验 docs/index.json（需先 npm install）
 ```

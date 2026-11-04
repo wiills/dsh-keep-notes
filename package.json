@@ -44,6 +44,7 @@
   ],
   "scripts": {
     "check": "node --check index.js && node --check client.js",
+    "test": "node --test",
     "validate:index": "node scripts/validate-index.mjs"
   },
   "devDependencies": {
