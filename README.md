@@ -2,6 +2,8 @@
 
 Keep 风格的便签、按日历排布的待办清单，以及 GitHub 风格的活动热力图。整个功能独立占据 DSH 左侧栏的一个页面。
 
+**安装**：DSH → Plugins → 安装对话框，粘贴 `git+https://github.com/wiills/dsh-keep-notes.git#v1.1.0`，装好后刷新页面。
+
 ![深色主题](https://raw.githubusercontent.com/wiills/dsh-keep-notes/main/docs/screenshots/dark.png)
 
 ![浅色主题](https://raw.githubusercontent.com/wiills/dsh-keep-notes/main/docs/screenshots/light.png)
@@ -19,7 +21,17 @@ Keep 风格的便签、按日历排布的待办清单，以及 GitHub 风格的�
 
 ## 安装
 
-### 从插件市场安装
+### 用 GitHub 地址直接安装（推荐）
+
+在 DSH 的 **Plugins** 页面打开安装对话框，粘贴下面这行，回车：
+
+```
+git+https://github.com/wiills/dsh-keep-notes.git#v1.1.0
+```
+
+装好后刷新页面即可。`#v1.1.0` 是标签；换成 `#main` 跟随主线，或换成 `#<提交 SHA>` 固定到某次提交。
+
+### 从插件市场安装（可选）
 
 1. 在 DSH 中启用实验性插件市场组合包 `@deepseek-ai/dsh-experimental-plugin-market-bundle`；
 2. 打开 **Plugins → Discover → Index sources**，添加索引地址：
@@ -36,21 +48,11 @@ Keep 风格的便签、按日历排布的待办清单，以及 GitHub 风格的�
 
 3. 搜索「便签」或「notes」，安装后刷新页面。
 
-索引当前指向 GitHub 上的固定提交，不依赖 npm。
-
-### 直接安装
-
-在 Plugins 页面的安装对话框中输入：
-
-```
-git+https://github.com/wiills/dsh-keep-notes.git#0c7e623d0e1bfc348d1ec8786a318e393ad6ca1f
-```
-
-npm 版本发布后，也可以直接输入 `dsh-keep-notes@1.0.0`。
+索引里的版本同样指向 GitHub 上的提交，不依赖 npm；npm 可访问后会再补 npm 源。
 
 ## 使用
 
-- **今天 / 7 天 / 月视图**：标题栏工具行切换；「缩回」回到默认的 7 天布局。
+- **7 天 / 月视图**：标题栏工具行切换；回到今天点迷你月历里的今天，或便签区右侧的「今天」。
 - **新建待办**：点任意日期列底部的「+ 待办」。
 - **完成待办**：点左侧圆圈；双击文字可以改名。
 - **新建便签**：点「+ 新建便签」；便签底部圆点切换颜色。
@@ -76,16 +78,16 @@ npm pack --dry-run     # 查看发布内容
 npm run validate:index # 校验 docs/index.json（需先 npm install）
 ```
 
-本地预览：把仓库目录作为 bundle 安装（`plugin_manager` 的 `install_bundle`），或在发布后从 npm 安装。
+本地预览：把仓库目录作为 bundle 安装（`plugin_manager` 的 `install_bundle`），或直接用上面的 GitHub 地址安装。
 
 ## 发布新版本
 
-1. 改代码并提交，记下 `git rev-parse HEAD`；
-2. 在 `docs/index.json` 的 `versions[]` 顶部加一条新版本，`publishTimestamp` 用发布时间（Unix 秒）：
-   - Git 源：`{"type":"git","url":"https://github.com/wiills/dsh-keep-notes","commit":"<新 SHA>"}`
-   - npm 源（npm 可访问时）：先 `npm version patch && npm publish`，再写 `{"type":"npm"}`
-3. `npm run validate:index`；
-4. `git push`，GitHub Pages 会自动更新索引。
+1. 改代码，`npm version <x.y.z> --no-git-tag-version`，更新 CHANGELOG，提交；
+2. 打标签并推送：`git tag -a vX.Y.Z -m "dsh-keep-notes X.Y.Z"`，再 `git push origin vX.Y.Z`；
+3. 在 `docs/index.json` 的 `versions[]` 顶部加一条新版本，`publishTimestamp` 用发布时间（Unix 秒），`source` 指向该版本的提交：
+   `{"type":"git","url":"https://github.com/wiills/dsh-keep-notes","commit":"<提交 SHA>"}`；
+4. `npm run validate:index`，提交并 `git push`；
+5. npm 可访问时再 `npm publish`，并把该版本的 `source` 改成 `{"type":"npm"}`。
 
 ## License
 
@@ -102,8 +104,8 @@ Keep-style notes, calendar-based todos and a GitHub-style activity heatmap, rend
 - Calendar notes follow the selected day, global notes stay put, and a fixed note rail sits on the far right.
 - Background mode auto / black / white (black and white ignore the app theme), plus per-section background images.
 - GitHub-style 16 × 7 activity heatmap and a mini month calendar.
-- Follows the DSH dark/light theme; five note colors from the Microsoft To Do palette; zh/en UI.
+- Follows the DSH dark/light theme, with an optional fixed black or white background; five note colors from the Microsoft To Do palette; zh/en UI.
 
-Install by adding the index `https://wiills.github.io/dsh-keep-notes/index.json` in **Plugins → Discover → Index sources**, or install the pinned commit `git+https://github.com/wiills/dsh-keep-notes.git#0c7e623d0e1bfc348d1ec8786a318e393ad6ca1f` directly. The index installs from GitHub; npm publishing is pending.
+Install directly with `git+https://github.com/wiills/dsh-keep-notes.git#v1.1.0` in the Plugins install dialog, or add the index `https://wiills.github.io/dsh-keep-notes/index.json` under **Plugins → Discover → Index sources**. npm publishing is pending.
 
 All data stays in `localStorage`; the plugin makes no network requests.
