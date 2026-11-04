@@ -32,24 +32,6 @@ function readJson(req) {
       reject(new Error('content-type must be application/json'));
       return;
     }
-    const site = String((req.headers && req.headers['sec-fetch-site']) || '').toLowerCase();
-    if (site && site !== 'same-origin' && site !== 'none') {
-      reject(new Error('cross-site request refused'));
-      return;
-    }
-    const origin = String((req.headers && req.headers.origin) || '');
-    const host = String((req.headers && req.headers.host) || '');
-    if (origin && host) {
-      try {
-        if (new URL(origin).host !== host) {
-          reject(new Error('cross-origin request refused'));
-          return;
-        }
-      } catch (error) {
-        reject(new Error('invalid origin'));
-        return;
-      }
-    }
     const chunks = [];
     let size = 0;
     req.on('data', (chunk) => {
@@ -73,7 +55,7 @@ function readJson(req) {
   });
 }
 
-function route(store, path, handler) {
+function route(path, handler, admit) {
   return {
     kind: 'exact',
     path: path,
@@ -81,6 +63,13 @@ function route(store, path, handler) {
       try {
         if (req.url !== path) {
           send(res, 404, { error: 'not found' });
+          return;
+        }
+        const admission = admit(req);
+        if (admission && admission.rejection) {
+          send(res, admission.rejection, {
+            error: admission.rejection === 401 ? 'authentication required' : 'request refused',
+          });
           return;
         }
         await handler(req, res);
@@ -91,30 +80,33 @@ function route(store, path, handler) {
   };
 }
 
-export function createBoardRoutes(store) {
+export function createBoardRoutes(store, options = {}) {
+  const admit = options.admit;
+  if (typeof admit !== 'function') throw new Error('createBoardRoutes requires an admit function');
+  const authorize = (req) => admit(req);
   return [
-    route(store, STATE_ROUTE, async (req, res) => {
+    route(STATE_ROUTE, async (req, res) => {
       if (req.method !== 'GET') {
         send(res, 405, { error: 'method not allowed' });
         return;
       }
       send(res, 200, await store.list());
-    }),
-    route(store, INIT_ROUTE, async (req, res) => {
+    }, authorize),
+    route(INIT_ROUTE, async (req, res) => {
       if (req.method !== 'POST') {
         send(res, 405, { error: 'method not allowed' });
         return;
       }
       send(res, 200, await store.initialize(await readJson(req)));
-    }),
-    route(store, OPS_ROUTE, async (req, res) => {
+    }, authorize),
+    route(OPS_ROUTE, async (req, res) => {
       if (req.method !== 'POST') {
         send(res, 405, { error: 'method not allowed' });
         return;
       }
       const body = await readJson(req);
       send(res, 200, await store.applyOps(body && body.ops));
-    }),
+    }, authorize),
   ];
 }
 
@@ -124,9 +116,11 @@ export function apply(ctx) {
     ctx.effect(() => ctx.tools.register(definition), 'keep-notes: ' + definition.name);
   }
 
-  ctx.inject(['webServer'], (child) => {
+  ctx.inject(['webServer', 'connection'], (child) => {
     child.effect(() => {
-      const disposers = createBoardRoutes(store).map((route) => child.webServer.register(route));
+      const disposers = createBoardRoutes(store, {
+        admit: (request) => child.connection.admit(request),
+      }).map((route) => child.webServer.register(route));
       return () => {
         for (const dispose of disposers) dispose();
       };

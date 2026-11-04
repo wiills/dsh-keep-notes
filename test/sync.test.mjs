@@ -175,3 +175,16 @@ test('a Host change reaches the panel through the poll', async () => {
   await settle();
   assert.equal(board.getSnapshot().todos.some((todo) => todo.id === 't-agent'), true);
 });
+
+test('a large offline queue is sent in Host-sized batches', async () => {
+  const before = host.todos.length;
+  for (let index = 0; index < 120; index += 1) board.addTodo(null, 'bulk ' + index);
+  await settle();
+  for (let tick = 0; tick < 8 && host.todos.length < before + 120; tick += 1) {
+    intervals[0]();
+    await settle();
+  }
+  assert.equal(host.todos.length, before + 120);
+  assert.equal(JSON.parse(storage.getItem('dsh.keep-notes.sync.v1')).length, 0);
+  assert.equal(board.getSnapshot().todos.length, before + 120);
+});

@@ -73,6 +73,29 @@ test('browser operations are idempotent by opId and update one revision', async 
   assert.equal(toggled.todos[0].done, true);
 });
 
+test('a failed operation batch leaves both memory and disk unchanged', async () => {
+  const store = await tempStore();
+  await store.initialize({ todos: [], notes: [] });
+  const before = await store.list();
+
+  await assert.rejects(
+    store.applyOps([
+      {
+        type: 'addTodo',
+        opId: 'partial-add',
+        todo: { id: 't-partial', text: 'must roll back', date: null, done: false },
+      },
+      { type: 'unknown-operation', opId: 'partial-unknown' },
+    ]),
+    /unknown operation/,
+  );
+
+  const after = await store.list();
+  assert.deepEqual(after, before);
+  const reloaded = new BoardStore({ file: store.file });
+  assert.deepEqual(await reloaded.list(), before);
+});
+
 test('note updates, pinned notes and caps stay inside the Host contract', async () => {
   const store = await tempStore();
   await store.initialize({ todos: [], notes: [] });
@@ -102,6 +125,11 @@ test('apply registers the tool surface and the three exact API routes', () => {
       callback();
       return () => {};
     },
+    connection: {
+      admit() {
+        return { peer: {} };
+      },
+    },
     webServer: {
       register(route) {
         routes.set(route.path, route);
@@ -115,7 +143,7 @@ test('apply registers the tool surface and the three exact API routes', () => {
       return () => {};
     },
     inject(dependencies, callback) {
-      if (dependencies.includes('webServer')) callback(child);
+      if (dependencies.includes('webServer') && dependencies.includes('connection')) callback(child);
     },
     tools: {
       register(definition) {
@@ -147,7 +175,9 @@ test('apply registers the tool surface and the three exact API routes', () => {
 
 test('the HTTP API initializes, writes and reads the same store', async () => {
   const store = await tempStore();
-  const routes = new Map(createBoardRoutes(store).map((route) => [route.path, route]));
+  const routes = new Map(
+    createBoardRoutes(store, { admit: () => ({ peer: {} }) }).map((route) => [route.path, route]),
+  );
 
   const invoke = async (route, method, body, headers = { 'content-type': 'application/json' }) => {
     const request = Readable.from(body ? [Buffer.from(JSON.stringify(body))] : []);
@@ -167,6 +197,12 @@ test('the HTTP API initializes, writes and reads the same store', async () => {
     await route.handler(request, response);
     return { status, body: payload ? JSON.parse(payload) : null };
   };
+
+  const denied = new Map(
+    createBoardRoutes(store, { admit: () => ({ rejection: 401 }) }).map((route) => [route.path, route]),
+  );
+  const unauthenticated = await invoke(denied.get('/dsh-keep-notes/state'), 'GET');
+  assert.equal(unauthenticated.status, 401);
 
   const rejected = await invoke(
     routes.get('/dsh-keep-notes/ops'),

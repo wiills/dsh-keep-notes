@@ -10,6 +10,7 @@
       const API = '/dsh-keep-notes';
       const POLL_MS = 4000;
       const MAX_QUEUE = 200;
+      const MAX_BATCH = 100;
       let queue = [];
       let started = false;
       let initialized = false;
@@ -91,7 +92,7 @@
       const flush = async () => {
         if (!initialized || flushing || queue.length === 0) return;
         flushing = true;
-        const batch = queue.slice(0);
+        const batch = queue.slice(0, MAX_BATCH);
         try {
           const state = await request('POST', '/ops', { ops: batch });
           const sent = new Set(batch.map((op) => op.opId));

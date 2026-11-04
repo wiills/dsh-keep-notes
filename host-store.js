@@ -101,6 +101,16 @@ function freshState() {
   return { version: VERSION, revision: 0, todos: [], notes: [], appliedOps: [] };
 }
 
+function cloneState(state) {
+  return {
+    version: state.version,
+    revision: state.revision,
+    todos: state.todos.map((todo) => ({ ...todo })),
+    notes: state.notes.map((note) => ({ ...note })),
+    appliedOps: state.appliedOps.slice(),
+  };
+}
+
 function readState(raw) {
   const parsed = JSON.parse(raw);
   const source = parsed && typeof parsed === 'object' ? parsed : {};
@@ -194,11 +204,19 @@ export class BoardStore {
   mutate(change) {
     const run = this.chain.then(async () => {
       await this.load();
-      const next = change(this.state);
-      if (next && next.changed) {
-        this.state.revision += 1;
-        this.state.appliedOps = this.state.appliedOps.slice(-MAX_APPLIED_OPS);
-        await this.persist();
+      const backup = cloneState(this.state);
+      let next;
+      try {
+        next = change(this.state);
+        if (next && next.changed) {
+          this.state.revision += 1;
+          this.state.appliedOps = this.state.appliedOps.slice(-MAX_APPLIED_OPS);
+          await this.persist();
+        }
+      } catch (error) {
+        /* A failed batch or write must not leave a partially applied state. */
+        this.state = backup;
+        throw error;
       }
       if (!next) return undefined;
       return typeof next.value === 'function' ? next.value() : next.value;
