@@ -72,10 +72,22 @@ git+https://github.com/wiills/dsh-keep-notes.git#v1.1.0
 - DSH `^0.2.1-rc.5`（见 `package.json` 的 `engines.dsh`）。
 - Web 端；便签底色依赖 `color-mix()`，需要 Edge / Chrome 111+。
 
+## 源码结构
+
+DSH 的浏览器半边只能加载一个文件，因此 [`client.js`](client.js) 是由 [`src/`](src) 生成的单文件 bundle，不直接手改。源码按职责拆分：
+
+- 基础：`constants.js`、`dictionaries.js`、`dates.js`、`helpers.js`
+- 数据：`store-seed.js`、`store-sanitize.js`、`store-appearance.js`、`store-create.js`
+- 界面：`icons.js`、`todos.js`、`month-grid.js`、`mini-month.js`、`heatmap.js`、`notes.js`、`settings.js`、`panel.js`
+- 样式与注册：`styles.js`、`plugin.js`
+
+改完 `src/` 后运行 `npm run build`；`npm run check` 会检查 `client.js` 是否与源码同步。
+
 ## 开发
 
 ```bash
-npm run check          # node --check
+npm run build          # 从 src/ 生成 client.js
+npm run check          # 语法检查 + 生成物一致性
 npm test               # Node 原生测试（test/board.test.mjs）
 npm pack --dry-run     # 查看发布内容
 npm run validate:index # 校验 docs/index.json（需先 npm install）
