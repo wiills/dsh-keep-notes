@@ -134,7 +134,7 @@ window.__ModuleLoader__.load({
       fixedPlaceholder: '随时记一笔…',
       fixedSaved: '已保存 · {date}',
       calendarNotesOn: '日历便签 · {date}',
-      todoPlaceholder: '+ 待办',
+      todoPlaceholder: '待办',
       addTodo: '添加待办',
       newNote: '新建便签',
       notePlaceholder: '写点什么…',
@@ -214,7 +214,7 @@ window.__ModuleLoader__.load({
       fixedPlaceholder: 'Jot something down…',
       fixedSaved: 'Saved · {date}',
       calendarNotesOn: 'Calendar notes · {date}',
-      todoPlaceholder: '+ Todo',
+      todoPlaceholder: 'Todo',
       addTodo: 'Add todo',
       newNote: 'New note',
       notePlaceholder: 'Write something…',
@@ -1988,9 +1988,10 @@ window.__ModuleLoader__.load({
       const fixedNote = notes.find((note) => note.fixed === true) || null;
       const openTodos = todos.filter((todo) => !todo.done).length;
 
-      const pickDate = (iso) => {
+      const selectDate = (iso) => {
         setSelected(iso);
         if (view === 'week') setWindowStart(iso);
+        else setMonthIso(startOfMonth(iso));
       };
       const expand = () => {
         setView('month');
@@ -2131,7 +2132,7 @@ window.__ModuleLoader__.load({
               todos: todos,
               selected: selected,
               today: today,
-              onPick: pickDate,
+              onPick: selectDate,
             }),
           ),
           h(
@@ -2212,10 +2213,10 @@ window.__ModuleLoader__.load({
                   selected: selected,
                   today: today,
                   onShiftMonth: (direction) => setMonthIso((current) => addMonths(current, direction)),
-                  onSelect: setSelected,
+                  onSelect: selectDate,
                   onAdd: (date, text) => {
                     board.addTodo(date, text);
-                    setSelected(date);
+                    selectDate(date);
                   },
                   onToggle: toggleTodo,
                 }),
@@ -2242,7 +2243,7 @@ window.__ModuleLoader__.load({
                   className: 'kn-btn kn-icon-btn',
                   title: t('prevDay'),
                   'aria-label': t('prevDay'),
-                  onClick: () => setSelected(addDays(selected, -1)),
+                  onClick: () => selectDate(addDays(selected, -1)),
                 },
                 h(Chevron, { dir: 'left' }),
               ),
@@ -2258,11 +2259,11 @@ window.__ModuleLoader__.load({
                   className: 'kn-btn kn-icon-btn',
                   title: t('nextDay'),
                   'aria-label': t('nextDay'),
-                  onClick: () => setSelected(addDays(selected, 1)),
+                  onClick: () => selectDate(addDays(selected, 1)),
                 },
                 h(Chevron, { dir: 'right' }),
               ),
-              h('button', { type: 'button', className: 'kn-btn', onClick: () => setSelected(today) }, t('today')),
+              h('button', { type: 'button', className: 'kn-btn', onClick: () => selectDate(today) }, t('today')),
             ),
           ),
           h(
@@ -2340,6 +2341,7 @@ window.__ModuleLoader__.load({
   height: 100%;
   min-height: 100%;
   overflow: auto;
+  container-type: inline-size;
   padding: 0 22px 30px;
   background-color: var(--kn-paper, var(--dsw-alias-bg-base));
   background-image:
@@ -2381,7 +2383,7 @@ window.__ModuleLoader__.load({
 }
 .kn-head.has-bg .kn-head-left,
 .kn-head.has-bg .kn-head-right { position: relative; z-index: 1; }
-.kn-head-left { display: flex; align-items: flex-start; gap: 14px; min-width: 0; flex: 1 1 auto; }
+.kn-head-left { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 14px; min-width: 0; flex: 1 1 auto; }
 .kn-head-titles { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .kn-head-right {
   position: relative;
@@ -2390,6 +2392,7 @@ window.__ModuleLoader__.load({
   flex-direction: column;
   align-items: flex-end;
   flex: 0 0 auto;
+  max-width: 100%;
 }
 .kn-title { margin: 0; font-size: 18px; font-weight: 650; letter-spacing: .01em; }
 .kn-sub { margin: 0; font-size: 11.5px; color: var(--dsw-alias-label-secondary); }
@@ -2495,11 +2498,11 @@ window.__ModuleLoader__.load({
 }
 .kn-seg-btn.is-active { background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-primary); font-weight: 600; }
 .kn-seg-btn:focus-visible { outline: 2px solid var(--kn-blue, var(--dsw-alias-brand-primary)); outline-offset: 1px; }
-.kn-heat { flex: 1 1 auto; display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; gap: 6px; }
+.kn-heat { flex: 1 1 auto; min-width: 0; max-width: 100%; display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; gap: 6px; }
 .kn-heat-head { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 6px; font-size: 11px; }
 .kn-heat-title { font-weight: 600; }
 .kn-heat-total { color: var(--dsw-alias-label-secondary); font-variant-numeric: tabular-nums; }
-.kn-heat-grid { display: flex; gap: 3px; }
+.kn-heat-grid { display: flex; max-width: 100%; overflow-x: auto; gap: 3px; }
 .kn-heat-col { display: flex; flex-direction: column; gap: 3px; }
 .kn-heat-cell { display: block; width: 14px; height: 14px; border-radius: 3px; background: var(--dsw-alias-bg-layer-2); }
 .kn-heat-cell.is-future { background: transparent; opacity: 0 !important; }
@@ -2517,7 +2520,10 @@ window.__ModuleLoader__.load({
   left: 0;
   z-index: 40;
   width: 348px;
-  max-width: calc(100vw - 120px);
+  width: min(348px, calc(100cqw - 8px));
+  max-width: calc(100vw - 48px);
+  max-height: min(70vh, 560px);
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -2718,6 +2724,7 @@ window.__ModuleLoader__.load({
 .kn-month {
   flex: 1 1 auto;
   min-width: 0;
+  overflow-x: auto;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -2729,9 +2736,9 @@ window.__ModuleLoader__.load({
 .kn-month-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .kn-month-nav { display: flex; align-items: center; gap: 6px; }
 .kn-month-title { font-size: 12.5px; font-weight: 650; }
-.kn-month-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
+.kn-month-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); min-width: 560px; gap: 5px; }
 .kn-month-week span { text-align: center; font-size: 10.5px; color: var(--dsw-alias-label-secondary); }
-.kn-month-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
+.kn-month-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); min-width: 560px; gap: 5px; }
 .kn-cell {
   display: flex;
   flex-direction: column;
@@ -2783,9 +2790,9 @@ window.__ModuleLoader__.load({
   opacity: 0;
 }
 .kn-cell:hover .kn-cell-add { opacity: 1; }
-.kn-notes-body { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }
-.kn-zone { display: flex; flex-direction: column; gap: 7px; min-width: 0; flex: 1 1 0; }
-.kn-zone-cal { flex: 1.35 1 0; }
+.kn-notes-body { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 12px; min-width: 0; }
+.kn-zone { display: flex; flex-direction: column; gap: 7px; min-width: 0; flex: 1 1 260px; }
+.kn-zone-cal { flex: 1.35 1 300px; }
 .kn-zone-head { display: flex; align-items: baseline; gap: 7px; }
 .kn-zone-title { font-size: 12px; font-weight: 600; color: var(--dsw-alias-label-primary); }
 .kn-zone-count { font-size: 10.5px; color: var(--dsw-alias-label-secondary); font-variant-numeric: tabular-nums; }
@@ -2852,7 +2859,9 @@ window.__ModuleLoader__.load({
 .kn-swatch { width: 15px; height: 15px; padding: 0; border: 1px solid var(--dsw-alias-border-l2); border-radius: 50%; cursor: pointer; }
 .kn-swatch.is-active { outline: 2px solid var(--kn-blue, var(--dsw-alias-brand-primary)); outline-offset: 1px; }
 .kn-fixed {
-  flex: 0 0 252px;
+  flex: 0 1 252px;
+  min-width: 220px;
+  max-width: 100%;
   position: sticky;
   top: 14px;
   display: flex;
@@ -2911,6 +2920,18 @@ window.__ModuleLoader__.load({
     border-right: 1px solid var(--dsw-alias-border-l1);
     border-left: 3px solid var(--kn-teal, #00B294);
   }
+}
+@container (max-width: 900px) {
+  .kn-fixed {
+    flex: 1 1 100%;
+    position: static;
+    border-right: 1px solid var(--dsw-alias-border-l1);
+    border-left: 3px solid var(--kn-teal, #00B294);
+  }
+}
+@container (max-width: 560px) {
+  .kn-zone,
+  .kn-zone-cal { flex: 1 1 100%; }
 }
 .kn-section.has-bg :where(.kn-day:not(.is-today):not(.is-selected):not(.kn-global-col)) {
   background: var(--dsw-alias-bg-layer-1);
