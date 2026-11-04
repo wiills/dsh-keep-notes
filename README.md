@@ -68,6 +68,14 @@ npm run validate:index # 校验 docs/index.json（需先 npm install）
 
 本地预览：把仓库目录作为 bundle 安装（`plugin_manager` 的 `install_bundle`），或在发布后从 npm 安装。
 
+## 发布新版本
+
+1. `npm version patch`（或 `minor` / `major`）；
+2. `npm publish`（仓库已配置 `publishConfig.registry`，发布到 npmjs）；
+3. 在 `docs/index.json` 的 `versions[]` 顶部加一条新版本，`publishTimestamp` 用发布时间（Unix 秒）；
+4. `npm run validate:index`；
+5. `git push`，GitHub Pages 会自动更新索引。
+
 ## License
 
 MIT © 2026 wiills
