@@ -3325,7 +3325,9 @@ button.kn-col-head:focus-visible {
 .kn-todo:hover { background: var(--dsw-alias-bg-layer-2); }
 .kn-todo.has-color { padding-left: 6px; }
 .kn-todo.is-editing { padding: 2px; flex-wrap: wrap; row-gap: 4px; }
+.kn-todo.is-editing.has-color { padding-left: 6px; }
 .kn-todo-colors { flex: 0 0 100%; display: flex; justify-content: flex-end; padding-left: 18px; }
+.kn-todo-colors .kn-swatches { flex-wrap: wrap; justify-content: flex-end; }
 .kn-check {
   flex: 0 0 auto;
   width: 14px;
