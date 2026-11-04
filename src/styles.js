@@ -289,10 +289,12 @@
 }
 .kn-sync-badge.is-on { color: var(--dsw-alias-state-success-primary); border-color: currentColor; }
 .kn-sync-row { display: flex; gap: 6px; align-items: center; }
-.kn-sync-input {
+.kn-sync-path {
   flex: 1 1 auto;
   min-width: 0;
-  height: 28px;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
   padding: 3px 7px;
   border: 1px solid var(--dsw-alias-border-l2);
   border-radius: 6px;
@@ -300,11 +302,12 @@
   color: var(--dsw-alias-label-primary);
   font: inherit;
   font-size: 10.5px;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.kn-sync-input:focus-visible {
-  outline: 2px solid var(--kn-blue, var(--dsw-alias-brand-primary));
-  outline-offset: 1px;
-}
+.kn-sync-path.is-empty { color: var(--dsw-alias-label-secondary); font-style: italic; }
 .kn-sync-status {
   margin: 0;
   color: var(--dsw-alias-label-secondary);

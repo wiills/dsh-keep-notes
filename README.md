@@ -20,7 +20,7 @@ Keep 风格的便签、按日历排布的待办清单，以及 GitHub 风格的�
 - **外观设置**：背景可选自动 / 黑 / 白（黑、白固定配色，不跟随系统主题）；标题栏、待办区、便签区可分别设置背景图，遮罩强度可调。
 - **主题与配色**：跟随 DSH 深色/浅色主题；便签和待办提供黄、绿、蓝、紫、红五色（Microsoft To Do 色板）。
 - **中英文界面**：跟随 DSH 语言切换。
-- **共享文件夹同步**：在设置里填一个已被 OneDrive、Dropbox 或 Syncthing 同步的文件夹，多台 DSH 的待办和便签会自动合并；不需要插件自己的云服务。背景图片仍只在本机。
+- **共享文件夹同步**：在设置里点「选择文件夹…」，用系统文件夹选择器选一个已被 OneDrive、Dropbox 或 Syncthing 同步的目录，多台 DSH 的待办和便签会自动合并；不需要插件自己的云服务。背景图片仍只在本机。
 - **Agent 接入**：agent 可以用 `keep_notes_*` 工具查询、新增、编辑、勾选和删除便签/待办；改动会同步到打开的面板。
 
 ## 安装
@@ -62,8 +62,8 @@ git+https://github.com/wiills/dsh-keep-notes.git#v1.3.0
 - **待办颜色**：带颜色的待办在日期列里显示同色底纹和左侧色条；圆点只影响这一条待办，不影响整列。
 - **新建便签**：点「+ 新建便签」；便签底部圆点切换颜色。
 - **固定便签**：最右栏，输入即自动保存。
-- **设置**：齿轮在「7 天 / 月视图」右侧，可切换背景（自动 / 黑 / 白）、换背景图、调遮罩强度；同一面板底部的「共享文件夹同步」可以填写同步目录。点击空白处或按 Esc 关闭。
-- **跨设备同步**：打开设置 →「共享文件夹同步」，填入一个已经存在的绝对路径，例如 `C:\Users\你\OneDrive\dsh-keep-notes`。每台设备都填自己的同步目录；插件只写一个 `dsh-keep-notes.board.json` 文件，网盘客户端负责传输。启用后每 5 秒检查并合并一次，也可以重新打开设置查看状态。
+- **设置**：齿轮在「7 天 / 月视图」右侧，可切换背景（自动 / 黑 / 白）、换背景图、调遮罩强度；同一面板底部的「共享文件夹同步」可以点击「选择文件夹…」打开系统选择器。点击空白处或按 Esc 关闭。
+- **跨设备同步**：打开设置 →「共享文件夹同步」，点「选择文件夹…」，在系统弹出的文件夹选择器里选一个已经存在的目录，例如 OneDrive 下的 `dsh-keep-notes`。不需要手填路径；每台设备都选自己的同步目录。插件只写一个 `dsh-keep-notes.board.json` 文件，网盘客户端负责传输。启用后每 5 秒检查并合并一次，也可以重新打开设置查看状态或更换文件夹。
 
 ## 数据与隐私
 
@@ -149,7 +149,7 @@ Keep-style notes, calendar-based todos and a GitHub-style activity heatmap, rend
 - Background mode auto / black / white (black and white ignore the app theme), plus per-section background images.
 - GitHub-style 16 × 7 activity heatmap and a mini month calendar.
 - Follows the DSH dark/light theme, with an optional fixed black or white background; five note and todo colors from the Microsoft To Do palette; zh/en UI.
-- Optional shared-folder sync: point the panel at a folder already replicated by OneDrive, Dropbox or Syncthing; todos and notes merge across devices without a plugin cloud service. Background images stay local.
+- Optional shared-folder sync: click **Choose folder…** in the panel settings and use the system folder picker to select a folder already replicated by OneDrive, Dropbox or Syncthing; todos and notes merge across devices without a plugin cloud service. Background images stay local.
 - Agent tools (`keep_notes_*`) can list, add, edit, complete and remove items; panel changes appear in the same board.
 
 Install directly with `git+https://github.com/wiills/dsh-keep-notes.git#v1.3.0` in the Plugins install dialog, or add the index `https://wiills.github.io/dsh-keep-notes/index.json` under **Plugins → Discover → Index sources**. npm publishing is pending.

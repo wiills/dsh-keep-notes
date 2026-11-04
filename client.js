@@ -200,9 +200,13 @@ window.__ModuleLoader__.load({
       storageIssue: '浏览器存储空间不足，最近的修改可能没有保存。',
       storageDismiss: '知道了',
       syncTitle: '共享文件夹同步',
-      syncHint: '选择一个已经被 OneDrive、Dropbox 或 Syncthing 同步的文件夹。只同步待办和便签，背景图片仍只在本机。',
-      syncFolder: '文件夹路径',
+      syncHint: '点击下方按钮，在系统文件夹选择器里选一个已经被 OneDrive、Dropbox 或 Syncthing 同步的文件夹。只同步待办和便签，背景图片仍只在本机。',
+      syncFolder: '同步文件夹',
       syncFolderPlaceholder: 'C:\\Users\\你\\OneDrive\\dsh-keep-notes',
+      syncChoose: '选择文件夹…',
+      syncChange: '更换文件夹…',
+      syncNoFolder: '尚未选择文件夹',
+      syncPickFailed: '无法打开文件夹选择器：{detail}',
       syncEnable: '启用同步',
       syncDisable: '关闭同步',
       syncEnabled: '已启用',
@@ -296,9 +300,13 @@ window.__ModuleLoader__.load({
       storageIssue: 'Browser storage is full; recent changes may not be saved.',
       storageDismiss: 'Dismiss',
       syncTitle: 'Shared-folder sync',
-      syncHint: 'Choose a folder already synced by OneDrive, Dropbox or Syncthing. Only todos and notes sync; background images stay local.',
-      syncFolder: 'Folder path',
+      syncHint: 'Choose a folder already synced by OneDrive, Dropbox or Syncthing with the system folder picker below. Only todos and notes sync; background images stay local.',
+      syncFolder: 'Sync folder',
       syncFolderPlaceholder: 'C:\\Users\\you\\OneDrive\\dsh-keep-notes',
+      syncChoose: 'Choose folder…',
+      syncChange: 'Change folder…',
+      syncNoFolder: 'No folder selected',
+      syncPickFailed: 'Could not open the folder picker: {detail}',
       syncEnable: 'Enable sync',
       syncDisable: 'Disable sync',
       syncEnabled: 'Enabled',
@@ -2166,7 +2174,7 @@ window.__ModuleLoader__.load({
     /* --------------------------------------------------------------------- */
 
     function SyncSettings(props) {
-      const { t } = props;
+      const { t, pickDirectory } = props;
       const [info, setInfo] = React.useState(null);
       const [folder, setFolder] = React.useState('');
       const [busy, setBusy] = React.useState(false);
@@ -2243,6 +2251,36 @@ window.__ModuleLoader__.load({
         }
       };
 
+      const choose = async () => {
+        if (busy) return;
+        if (typeof pickDirectory !== 'function') {
+          setMessage(t('syncUnavailable'));
+          return;
+        }
+        setBusy(true);
+        setMessage('');
+        try {
+          let chosen;
+          try {
+            chosen = await pickDirectory();
+          } catch (error) {
+            setMessage(t('syncPickFailed', { detail: error && error.message ? error.message : String(error) }));
+            return;
+          }
+          if (!chosen) return;
+          try {
+            const next = await request('POST', { folder: String(chosen).trim() });
+            setInfo(next);
+            setFolder(next.folder || '');
+            setMessage(t('syncSaved'));
+          } catch (error) {
+            setMessage(t('syncInvalid', { detail: error && error.message ? error.message : String(error) }));
+          }
+        } finally {
+          setBusy(false);
+        }
+      };
+
       const state = info ? info.state || (info.enabled ? 'idle' : 'disabled') : 'loading';
       const statusLabel =
         state === 'syncing'
@@ -2270,28 +2308,24 @@ window.__ModuleLoader__.load({
         h(
           'div',
           { className: 'kn-sync-row' },
-          h('input', {
-            className: 'kn-sync-input',
-            type: 'text',
-            value: folder,
-            placeholder: t('syncFolderPlaceholder'),
-            'aria-label': t('syncFolder'),
-            spellCheck: false,
-            autoComplete: 'off',
-            onChange: (event) => setFolder(event.target.value),
-            onKeyDown: (event) => {
-              if (event.key === 'Enter' && !busy && folder.trim()) save(folder.trim());
+          h(
+            'div',
+            {
+              className: cx('kn-sync-path', !folder && 'is-empty'),
+              title: folder || t('syncNoFolder'),
+              'aria-label': t('syncFolder'),
             },
-          }),
+            folder || t('syncNoFolder'),
+          ),
           h(
             'button',
             {
               type: 'button',
               className: 'kn-btn',
-              disabled: busy || !folder.trim(),
-              onClick: () => save(folder.trim()),
+              disabled: busy || typeof pickDirectory !== 'function',
+              onClick: choose,
             },
-            busy ? t('processing') : t('syncEnable'),
+            busy ? t('processing') : folder ? t('syncChange') : t('syncChoose'),
           ),
         ),
         info && info.enabled
@@ -2321,7 +2355,7 @@ window.__ModuleLoader__.load({
     /* ------------------------------------------------------------------ */
 
     function BackgroundSettings(props) {
-      const { t, appearance, onChange, onSetImage, onClearImage, onClearImages, onClose } = props;
+      const { t, appearance, onChange, onSetImage, onClearImage, onClearImages, onClose, pickDirectory } = props;
       const [status, setStatus] = React.useState('');
       const [pending, setPending] = React.useState('');
       const [dim, setDim] = React.useState(appearance.dim);
@@ -2482,7 +2516,7 @@ window.__ModuleLoader__.load({
             t('clearAll'),
           ),
         ),
-        h(SyncSettings, { t: t }),
+        h(SyncSettings, { t: t, pickDirectory: pickDirectory }),
       );
     }
 
@@ -2518,7 +2552,7 @@ window.__ModuleLoader__.load({
     }
 
     function KeepNotesBody(props) {
-      const { board, t } = props;
+      const { board, t, pickDirectory } = props;
       const schemeStore = props.scheme || FALLBACK_SCHEME;
       const scheme = React.useSyncExternalStore(schemeStore.subscribe, schemeStore.get);
       const todos = useBoardSlice(board, (snapshot) => snapshot.todos);
@@ -2705,6 +2739,7 @@ window.__ModuleLoader__.load({
                         onClearImage: (slot) => board.clearImage(slot),
                         onClearImages: () => board.clearImages(),
                         onClose: () => setSettingsOpen(false),
+                        pickDirectory: pickDirectory,
                       })
                     : null,
                 ),
@@ -3207,10 +3242,12 @@ window.__ModuleLoader__.load({
 }
 .kn-sync-badge.is-on { color: var(--dsw-alias-state-success-primary); border-color: currentColor; }
 .kn-sync-row { display: flex; gap: 6px; align-items: center; }
-.kn-sync-input {
+.kn-sync-path {
   flex: 1 1 auto;
   min-width: 0;
-  height: 28px;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
   padding: 3px 7px;
   border: 1px solid var(--dsw-alias-border-l2);
   border-radius: 6px;
@@ -3218,11 +3255,12 @@ window.__ModuleLoader__.load({
   color: var(--dsw-alias-label-primary);
   font: inherit;
   font-size: 10.5px;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.kn-sync-input:focus-visible {
-  outline: 2px solid var(--kn-blue, var(--dsw-alias-brand-primary));
-  outline-offset: 1px;
-}
+.kn-sync-path.is-empty { color: var(--dsw-alias-label-secondary); font-style: italic; }
 .kn-sync-status {
   margin: 0;
   color: var(--dsw-alias-label-secondary);
@@ -3695,6 +3733,13 @@ button.kn-cell-day:focus-visible {
       }
 
       const themeService = typeof ctx.get === 'function' ? ctx.get('theme') : null;
+      const uiWorkspace = typeof ctx.get === 'function' ? ctx.get('uiWorkspace') : null;
+      const pickDirectory = () => {
+        if (!uiWorkspace || typeof uiWorkspace.pickDirectory !== 'function') {
+          return Promise.reject(new Error('directory picker unavailable'));
+        }
+        return uiWorkspace.pickDirectory();
+      };
       const readScheme = () => {
         try {
           const snapshot =
@@ -3734,7 +3779,7 @@ button.kn-cell-day:focus-visible {
             name: 'main',
             key: PANEL_ID,
             locale: NS,
-            inject: () => ({ board: board, scheme: schemeStore }),
+            inject: () => ({ board: board, scheme: schemeStore, pickDirectory: pickDirectory }),
           },
           KeepNotesPage,
         ),

@@ -1,5 +1,5 @@
     function SyncSettings(props) {
-      const { t } = props;
+      const { t, pickDirectory } = props;
       const [info, setInfo] = React.useState(null);
       const [folder, setFolder] = React.useState('');
       const [busy, setBusy] = React.useState(false);
@@ -76,6 +76,36 @@
         }
       };
 
+      const choose = async () => {
+        if (busy) return;
+        if (typeof pickDirectory !== 'function') {
+          setMessage(t('syncUnavailable'));
+          return;
+        }
+        setBusy(true);
+        setMessage('');
+        try {
+          let chosen;
+          try {
+            chosen = await pickDirectory();
+          } catch (error) {
+            setMessage(t('syncPickFailed', { detail: error && error.message ? error.message : String(error) }));
+            return;
+          }
+          if (!chosen) return;
+          try {
+            const next = await request('POST', { folder: String(chosen).trim() });
+            setInfo(next);
+            setFolder(next.folder || '');
+            setMessage(t('syncSaved'));
+          } catch (error) {
+            setMessage(t('syncInvalid', { detail: error && error.message ? error.message : String(error) }));
+          }
+        } finally {
+          setBusy(false);
+        }
+      };
+
       const state = info ? info.state || (info.enabled ? 'idle' : 'disabled') : 'loading';
       const statusLabel =
         state === 'syncing'
@@ -103,28 +133,24 @@
         h(
           'div',
           { className: 'kn-sync-row' },
-          h('input', {
-            className: 'kn-sync-input',
-            type: 'text',
-            value: folder,
-            placeholder: t('syncFolderPlaceholder'),
-            'aria-label': t('syncFolder'),
-            spellCheck: false,
-            autoComplete: 'off',
-            onChange: (event) => setFolder(event.target.value),
-            onKeyDown: (event) => {
-              if (event.key === 'Enter' && !busy && folder.trim()) save(folder.trim());
+          h(
+            'div',
+            {
+              className: cx('kn-sync-path', !folder && 'is-empty'),
+              title: folder || t('syncNoFolder'),
+              'aria-label': t('syncFolder'),
             },
-          }),
+            folder || t('syncNoFolder'),
+          ),
           h(
             'button',
             {
               type: 'button',
               className: 'kn-btn',
-              disabled: busy || !folder.trim(),
-              onClick: () => save(folder.trim()),
+              disabled: busy || typeof pickDirectory !== 'function',
+              onClick: choose,
             },
-            busy ? t('processing') : t('syncEnable'),
+            busy ? t('processing') : folder ? t('syncChange') : t('syncChoose'),
           ),
         ),
         info && info.enabled
@@ -154,7 +180,7 @@
     /* ------------------------------------------------------------------ */
 
     function BackgroundSettings(props) {
-      const { t, appearance, onChange, onSetImage, onClearImage, onClearImages, onClose } = props;
+      const { t, appearance, onChange, onSetImage, onClearImage, onClearImages, onClose, pickDirectory } = props;
       const [status, setStatus] = React.useState('');
       const [pending, setPending] = React.useState('');
       const [dim, setDim] = React.useState(appearance.dim);
@@ -315,6 +341,6 @@
             t('clearAll'),
           ),
         ),
-        h(SyncSettings, { t: t }),
+        h(SyncSettings, { t: t, pickDirectory: pickDirectory }),
       );
     }

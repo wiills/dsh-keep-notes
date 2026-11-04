@@ -16,6 +16,13 @@
       }
 
       const themeService = typeof ctx.get === 'function' ? ctx.get('theme') : null;
+      const uiWorkspace = typeof ctx.get === 'function' ? ctx.get('uiWorkspace') : null;
+      const pickDirectory = () => {
+        if (!uiWorkspace || typeof uiWorkspace.pickDirectory !== 'function') {
+          return Promise.reject(new Error('directory picker unavailable'));
+        }
+        return uiWorkspace.pickDirectory();
+      };
       const readScheme = () => {
         try {
           const snapshot =
@@ -55,7 +62,7 @@
             name: 'main',
             key: PANEL_ID,
             locale: NS,
-            inject: () => ({ board: board, scheme: schemeStore }),
+            inject: () => ({ board: board, scheme: schemeStore, pickDirectory: pickDirectory }),
           },
           KeepNotesPage,
         ),

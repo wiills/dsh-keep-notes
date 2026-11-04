@@ -26,7 +26,7 @@
     }
 
     function KeepNotesBody(props) {
-      const { board, t } = props;
+      const { board, t, pickDirectory } = props;
       const schemeStore = props.scheme || FALLBACK_SCHEME;
       const scheme = React.useSyncExternalStore(schemeStore.subscribe, schemeStore.get);
       const todos = useBoardSlice(board, (snapshot) => snapshot.todos);
@@ -213,6 +213,7 @@
                         onClearImage: (slot) => board.clearImage(slot),
                         onClearImages: () => board.clearImages(),
                         onClose: () => setSettingsOpen(false),
+                        pickDirectory: pickDirectory,
                       })
                     : null,
                 ),
