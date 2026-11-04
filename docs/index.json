@@ -46,7 +46,9 @@
           "version": "1.0.0",
           "publishTimestamp": 1793770261,
           "source": {
-            "type": "npm"
+            "type": "git",
+            "url": "https://github.com/wiills/dsh-keep-notes",
+            "commit": "e10f79351e6b63e3811fd83201e0ae79aac2740d"
           },
           "engines": {
             "dsh": "^0.2.1-rc.5"
