@@ -43,7 +43,7 @@ Keep 风格的便签、按日历排布的待办清单，以及 GitHub 风格的�
 在 Plugins 页面的安装对话框中输入：
 
 ```
-git+https://github.com/wiills/dsh-keep-notes.git#49349981b582efae41bfac8ec7009eac03ff9d3d
+git+https://github.com/wiills/dsh-keep-notes.git#0c7e623d0e1bfc348d1ec8786a318e393ad6ca1f
 ```
 
 npm 版本发布后，也可以直接输入 `dsh-keep-notes@1.0.0`。
@@ -104,6 +104,6 @@ Keep-style notes, calendar-based todos and a GitHub-style activity heatmap, rend
 - GitHub-style 16 × 7 activity heatmap and a mini month calendar.
 - Follows the DSH dark/light theme; five note colors from the Microsoft To Do palette; zh/en UI.
 
-Install by adding the index `https://wiills.github.io/dsh-keep-notes/index.json` in **Plugins → Discover → Index sources**, or install the pinned commit `git+https://github.com/wiills/dsh-keep-notes.git#49349981b582efae41bfac8ec7009eac03ff9d3d` directly. The index installs from GitHub; npm publishing is pending.
+Install by adding the index `https://wiills.github.io/dsh-keep-notes/index.json` in **Plugins → Discover → Index sources**, or install the pinned commit `git+https://github.com/wiills/dsh-keep-notes.git#0c7e623d0e1bfc348d1ec8786a318e393ad6ca1f` directly. The index installs from GitHub; npm publishing is pending.
 
 All data stays in `localStorage`; the plugin makes no network requests.

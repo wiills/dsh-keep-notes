@@ -43,6 +43,18 @@
       },
       "versions": [
         {
+          "version": "1.1.0",
+          "publishTimestamp": 1793771779,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wiills/dsh-keep-notes",
+            "commit": "0c7e623d0e1bfc348d1ec8786a318e393ad6ca1f"
+          },
+          "engines": {
+            "dsh": "^0.2.1-rc.5"
+          }
+        },
+        {
           "version": "1.0.1",
           "publishTimestamp": 1793771532,
           "source": {
