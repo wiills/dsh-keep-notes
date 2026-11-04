@@ -4,7 +4,7 @@
 
 Keep 风格的便签、按日历排布的待办清单，以及 GitHub 风格的活动热力图。整个功能独立占据 DSH 左侧栏的一个页面；同一份数据也通过 Host 工具开放给 agent 读写。
 
-**安装**：DSH → Plugins → 安装对话框，粘贴 `git+https://github.com/wiills/dsh-keep-notes.git#v1.1.0`，装好后刷新页面。
+**安装**：DSH → Plugins → 安装对话框，粘贴 `git+https://github.com/wiills/dsh-keep-notes.git#v1.2.0`，装好后刷新页面。
 
 ![深色主题](https://raw.githubusercontent.com/wiills/dsh-keep-notes/main/docs/screenshots/dark.png)
 
@@ -29,10 +29,10 @@ Keep 风格的便签、按日历排布的待办清单，以及 GitHub 风格的�
 在 DSH 的 **Plugins** 页面打开安装对话框，粘贴下面这行，回车：
 
 ```
-git+https://github.com/wiills/dsh-keep-notes.git#v1.1.0
+git+https://github.com/wiills/dsh-keep-notes.git#v1.2.0
 ```
 
-装好后刷新页面即可。`#v1.1.0` 是标签；换成 `#main` 跟随主线，或换成 `#<提交 SHA>` 固定到某次提交。
+装好后刷新页面即可。`#v1.2.0` 是标签；换成 `#main` 跟随主线，或换成 `#<提交 SHA>` 固定到某次提交。
 
 ### 从插件市场安装（可选）
 
@@ -65,7 +65,7 @@ git+https://github.com/wiills/dsh-keep-notes.git#v1.1.0
 ## 数据与隐私
 
 - Host 以 `DSH_HOME/keep-notes/board.json`（通常是 `~/.dsh/keep-notes/board.json`）为共享数据源；面板同时保留一份 `localStorage` 离线缓存（`dsh.keep-notes.board.v1`、`dsh.keep-notes.appearance.v1`、`dsh.keep-notes.images.v1`），底部还有一个待同步操作队列 `dsh.keep-notes.sync.v1`。
-- 面板通过同源的 `/dsh-keep-notes/*` 本地接口读写 Host；没有外部网络请求，不收集遥测。
+- 面板通过同源的 `/dsh-keep-notes/*` 本地接口读写 Host；接口要求已登录的 DSH Web 会话，未认证请求返回 401。没有外部网络请求，不收集遥测。
 - 首次连接时，如果 Host 板为空，会把 `localStorage` 里的现有数据上传；如果 Host 已有数据（例如 agent 先写入），以 Host 为准。
 - 背景图仍只在本机压缩并写入 `localStorage`，不会上传到 Host，也不会出现在 agent 工具结果里。
 - 图片与文字都有大小上限，存储不足时面板会提示；Host 不可用时面板继续使用本地缓存，恢复后自动重试队列。
@@ -140,6 +140,6 @@ Keep-style notes, calendar-based todos and a GitHub-style activity heatmap, rend
 - Follows the DSH dark/light theme, with an optional fixed black or white background; five note colors from the Microsoft To Do palette; zh/en UI.
 - Agent tools (`keep_notes_*`) can list, add, edit, complete and remove items; panel changes appear in the same board.
 
-Install directly with `git+https://github.com/wiills/dsh-keep-notes.git#v1.1.0` in the Plugins install dialog, or add the index `https://wiills.github.io/dsh-keep-notes/index.json` under **Plugins → Discover → Index sources**. npm publishing is pending.
+Install directly with `git+https://github.com/wiills/dsh-keep-notes.git#v1.2.0` in the Plugins install dialog, or add the index `https://wiills.github.io/dsh-keep-notes/index.json` under **Plugins → Discover → Index sources**. npm publishing is pending.
 
-The Host keeps the shared board at `DSH_HOME/keep-notes/board.json` (usually `~/.dsh/keep-notes/board.json`). The panel keeps a localStorage cache and syncs through the same-origin `/dsh-keep-notes/*` API; no external network requests or telemetry. Images stay in localStorage and are never sent to the Host or returned by agent tools.
+The Host keeps the shared board at `DSH_HOME/keep-notes/board.json` (usually `~/.dsh/keep-notes/board.json`). The panel keeps a localStorage cache and syncs through the same-origin `/dsh-keep-notes/*` API, which requires an authenticated DSH Web session; unauthenticated requests get 401. No external network requests or telemetry. Images stay in localStorage and are never sent to the Host or returned by agent tools.
