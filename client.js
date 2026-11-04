@@ -1645,11 +1645,6 @@ window.__ModuleLoader__.load({
         setSelected(iso);
         if (view === 'week') setWindowStart(iso);
       };
-      const jumpToday = () => {
-        setWindowStart(today);
-        setSelected(today);
-        setMonthIso(startOfMonth(today));
-      };
       const expand = () => {
         setView('month');
         setMonthIso(startOfMonth(selected));
@@ -1714,7 +1709,6 @@ window.__ModuleLoader__.load({
               h(
                 'div',
                 { className: 'kn-tools' },
-                h('button', { type: 'button', className: 'kn-btn', onClick: jumpToday }, t('today')),
                 h(
                   'div',
                   { className: 'kn-seg', role: 'group', 'aria-label': t('view') },
@@ -1739,14 +1733,42 @@ window.__ModuleLoader__.load({
                     t('month'),
                   ),
                 ),
-                view === 'month'
-                  ? h(
-                      'button',
-                      { type: 'button', className: 'kn-btn', title: t('collapse'), onClick: collapse },
-                      h(Chevron, { dir: 'up', size: 11 }),
-                      t('collapse'),
-                    )
-                  : null,
+                h(
+                  'div',
+                  { className: 'kn-tools-end' },
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: cx('kn-btn kn-icon-btn kn-gear', settingsOpen && 'is-active'),
+                      title: t('settings'),
+                      'aria-label': t('settings'),
+                      'aria-expanded': settingsOpen,
+                      onClick: () => setSettingsOpen((open) => !open),
+                    },
+                    h(
+                      'svg',
+                      {
+                        width: 16,
+                        height: 16,
+                        viewBox: '0 0 24 24',
+                        fill: 'currentColor',
+                        'aria-hidden': 'true',
+                      },
+                      h('path', {
+                        d: 'M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z',
+                      }),
+                    ),
+                  ),
+                  settingsOpen
+                    ? h(BackgroundSettings, {
+                        t: t,
+                        appearance: appearance,
+                        onChange: (patch) => board.setAppearance(patch),
+                        onClose: () => setSettingsOpen(false),
+                      })
+                    : null,
+                ),
               ),
             ),
             h(MiniMonth, {
@@ -1763,38 +1785,6 @@ window.__ModuleLoader__.load({
             { className: 'kn-head-right' },
             h(ActivityHeatmap, { todos: todos, notes: notes, t: t, lang: lang, scheme: scheme }),
           ),
-          h(
-            'button',
-            {
-              type: 'button',
-              className: cx('kn-btn kn-icon-btn kn-gear', settingsOpen && 'is-active'),
-              title: t('settings'),
-              'aria-label': t('settings'),
-              'aria-expanded': settingsOpen,
-              onClick: () => setSettingsOpen((open) => !open),
-            },
-            h(
-              'svg',
-              {
-                width: 16,
-                height: 16,
-                viewBox: '0 0 24 24',
-                fill: 'currentColor',
-                'aria-hidden': 'true',
-              },
-              h('path', {
-                d: 'M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z',
-              }),
-            ),
-          ),
-          settingsOpen
-            ? h(BackgroundSettings, {
-                t: t,
-                appearance: appearance,
-                onChange: (patch) => board.setAppearance(patch),
-                onClose: () => setSettingsOpen(false),
-              })
-            : null,
         ),
         h(
           'section',
@@ -2111,7 +2101,7 @@ window.__ModuleLoader__.load({
 .kn-btn:focus-visible { outline: 2px solid var(--kn-blue, var(--dsw-alias-brand-primary)); outline-offset: 1px; }
 .kn-btn:disabled { opacity: .45; cursor: default; }
 .kn-icon-btn { padding: 5px 7px; }
-.kn-gear { position: absolute; left: 22px; bottom: 8px; z-index: 3; }
+.kn-tools-end { position: relative; display: inline-flex; align-items: center; }
 .kn-gear.is-active { background: var(--dsw-alias-bg-layer-2); border-color: var(--dsw-alias-border-l2); }
 .kn-primary {
   background: var(--kn-blue, var(--dsw-alias-brand-primary));
@@ -2154,10 +2144,10 @@ window.__ModuleLoader__.load({
 .kn-settings {
   position: absolute;
   top: calc(100% + 8px);
-  left: 22px;
+  left: 0;
   z-index: 40;
   width: 348px;
-  max-width: calc(100% - 44px);
+  max-width: calc(100vw - 120px);
   display: flex;
   flex-direction: column;
   gap: 8px;

@@ -1,6 +1,6 @@
 {
   "name": "dsh-keep-notes",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Keep-style notes, calendar todos and a GitHub-style activity heatmap in a DSH sidebar panel.",
   "license": "MIT",
   "author": "wiills <me@wiills.com>",
