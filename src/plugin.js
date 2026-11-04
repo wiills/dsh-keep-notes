@@ -16,8 +16,8 @@
       }
 
       const themeService = typeof ctx.get === 'function' ? ctx.get('theme') : null;
-      const uiWorkspace = typeof ctx.get === 'function' ? ctx.get('uiWorkspace') : null;
       const pickDirectory = () => {
+        const uiWorkspace = typeof ctx.get === 'function' ? ctx.get('uiWorkspace') : null;
         if (!uiWorkspace || typeof uiWorkspace.pickDirectory !== 'function') {
           return Promise.reject(new Error('directory picker unavailable'));
         }
