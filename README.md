@@ -4,7 +4,7 @@
 
 Keep 风格的便签、按日历排布的待办清单，以及 GitHub 风格的活动热力图。整个功能独立占据 DSH 左侧栏的一个页面；同一份数据也通过 Host 工具开放给 agent 读写，并可选通过共享文件夹在多台设备间同步。
 
-**安装**：DSH → Plugins → 安装对话框，粘贴 `git+https://github.com/wiills/dsh-keep-notes.git#v1.3.0`，装好后刷新页面。
+**安装**：DSH → Plugins → 安装对话框，粘贴 `git+https://github.com/wiills/dsh-keep-notes.git#v1.3.1`，装好后刷新页面。
 
 ![深色主题](https://raw.githubusercontent.com/wiills/dsh-keep-notes/main/docs/screenshots/dark.png)
 
@@ -30,10 +30,10 @@ Keep 风格的便签、按日历排布的待办清单，以及 GitHub 风格的�
 在 DSH 的 **Plugins** 页面打开安装对话框，粘贴下面这行，回车：
 
 ```
-git+https://github.com/wiills/dsh-keep-notes.git#v1.3.0
+git+https://github.com/wiills/dsh-keep-notes.git#v1.3.1
 ```
 
-装好后刷新页面即可。`#v1.3.0` 是标签；换成 `#main` 跟随主线，或换成 `#<提交 SHA>` 固定到某次提交。
+装好后刷新页面即可。`#v1.3.1` 是标签；换成 `#main` 跟随主线，或换成 `#<提交 SHA>` 固定到某次提交。
 
 ### 从插件市场安装（可选）
 
@@ -152,6 +152,6 @@ Keep-style notes, calendar-based todos and a GitHub-style activity heatmap, rend
 - Optional shared-folder sync: click **Choose folder…** in the panel settings and use the system folder picker to select a folder already replicated by OneDrive, Dropbox or Syncthing; todos and notes merge across devices without a plugin cloud service. Background images stay local.
 - Agent tools (`keep_notes_*`) can list, add, edit, complete and remove items; panel changes appear in the same board.
 
-Install directly with `git+https://github.com/wiills/dsh-keep-notes.git#v1.3.0` in the Plugins install dialog, or add the index `https://wiills.github.io/dsh-keep-notes/index.json` under **Plugins → Discover → Index sources**. npm publishing is pending.
+Install directly with `git+https://github.com/wiills/dsh-keep-notes.git#v1.3.1` in the Plugins install dialog, or add the index `https://wiills.github.io/dsh-keep-notes/index.json` under **Plugins → Discover → Index sources**. npm publishing is pending.
 
 The Host keeps the shared board at `DSH_HOME/keep-notes/board.json` (usually `~/.dsh/keep-notes/board.json`). The panel keeps a localStorage cache and syncs through the same-origin `/dsh-keep-notes/*` API, which requires an authenticated DSH Web session; unauthenticated requests get 401. No external network requests or telemetry. Images stay in localStorage and are never sent to the Host or returned by agent tools. With shared-folder sync enabled, the Host writes todos and notes (not images) to `dsh-keep-notes.board.json` inside the folder the user chooses; that file is visible to the selected sync provider.
