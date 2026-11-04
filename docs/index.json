@@ -22,8 +22,8 @@
         "zh": "便签与待办"
       },
       "description": {
-        "en": "Keep-style notes, calendar todos and a GitHub-style activity heatmap in a sidebar panel.",
-        "zh": "Keep 风格便签、按日历排布的待办清单与 GitHub 风格活动热力图，独立占据一个左侧栏页面。"
+        "en": "Keep-style notes, calendar todos, a GitHub-style activity heatmap and shared agent tools in a sidebar panel.",
+        "zh": "Keep 风格便签、按日历排布的待办清单、GitHub 风格活动热力图，以及供 agent 读写的共享工具，独立占据一个左侧栏页面。"
       },
       "icon": "./icons/keep-notes.svg",
       "author": "wiills",
@@ -38,10 +38,24 @@
           "todo",
           "calendar",
           "heatmap",
+          "agent",
+          "tools",
           "keep"
         ]
       },
       "versions": [
+        {
+          "version": "1.2.0",
+          "publishTimestamp": 1793786689,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wiills/dsh-keep-notes",
+            "commit": "a38ff40b70030375dfd6735a3f0d8447c8926807"
+          },
+          "engines": {
+            "dsh": "^0.2.1-rc.5"
+          }
+        },
         {
           "version": "1.1.0",
           "publishTimestamp": 1793771779,
