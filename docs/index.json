@@ -22,8 +22,8 @@
         "zh": "便签与待办"
       },
       "description": {
-        "en": "Keep-style notes, calendar todos, a GitHub-style activity heatmap, shared agent tools and optional shared-folder sync in a sidebar panel.",
-        "zh": "Keep 风格便签、按日历排布的待办清单、GitHub 风格活动热力图、供 agent 读写的共享工具，以及可选的共享文件夹同步，独立占据一个左侧栏页面。"
+        "en": "Keep-style notes, calendar todos, a GitHub-style activity heatmap, shared agent tools, optional shared-folder sync and an eight-language UI in a sidebar panel.",
+        "zh": "Keep 风格便签、按日历排布的待办清单、GitHub 风格活动热力图、供 agent 读写的共享工具、可选的共享文件夹同步，以及 8 种界面语言，独立占据一个左侧栏页面。"
       },
       "icon": "./icons/keep-notes.svg",
       "author": "wiills",

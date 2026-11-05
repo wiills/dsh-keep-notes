@@ -6,6 +6,8 @@
 
 Keep-style notes, calendar-based todos and a GitHub-style activity heatmap, rendered as a standalone DSH sidebar page. The same board is exposed to the agent through Host tools and can optionally sync across devices through a shared folder.
 
+**Languages**: eight UI languages (中文 · English · 日本語 · Español · Français · Deutsch · Русский · Português) that follow the DSH language setting and switch live.
+
 **Install**: open the DSH **Plugins** install dialog and paste `git+https://github.com/wiills/dsh-keep-notes.git#v1.3.1`, then refresh the page.
 
 ![Dark theme](https://raw.githubusercontent.com/wiills/dsh-keep-notes/main/docs/screenshots/dark.png)
@@ -24,6 +26,26 @@ Keep-style notes, calendar-based todos and a GitHub-style activity heatmap, rend
 - **Eight UI languages**: Chinese, English, Japanese, Spanish, French, German, Russian and Brazilian Portuguese follow the DSH language setting and switch live; other DSH languages fall back to English.
 - **Shared-folder sync**: click **Choose folder…** in settings and use the system folder picker to select a folder already synced by OneDrive, Dropbox or Syncthing. Todos and notes merge across DSH instances without a plugin cloud service; background images stay local.
 - **Agent integration**: agents can use the `keep_notes_*` tools to list, add, edit, complete and remove notes and todos; changes appear in the open panel.
+
+## Languages
+
+The panel covers all eight languages DSH ships. Pick one in **Settings → General → Language** and the panel switches immediately, with no reload:
+
+| Language | Code |
+| --- | --- |
+| Chinese | `zh` |
+| English | `en` |
+| Japanese | `ja` |
+| Spanish | `es` |
+| French | `fr` |
+| German | `de` |
+| Russian | `ru` |
+| Portuguese (Brazil) | `pt` |
+
+- Every label in the panel, the dates and weekdays, the sidebar entry, and the plugin page title and description switch with it.
+- Without an explicit DSH language choice, the panel follows the browser/system language and falls back to English.
+- Languages outside the DSH catalog (including third-party language packs) currently fall back to English.
+- Only UI copy is translated; text already written into todos and notes stays as it is.
 
 ## Installation
 
