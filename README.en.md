@@ -108,6 +108,33 @@ After installation, agents can call:
 
 The tools and the panel share the same Host storage. The panel polls every 4 seconds and also fetches immediately when it regains focus.
 
+### Chat examples
+
+You do not need tool names or JSON. Just ask naturally; the agent chooses the tools and the panel updates within a few seconds.
+
+```text
+You: Add a todo due tomorrow: pay rent, red.
+Agent: Added "pay rent" for tomorrow in red.
+
+You: Add a note for today: design review at 3pm, green.
+Agent: Added the note for today in green.
+
+You: Mark "pay rent" as done.
+Agent: Marked "pay rent" as done.
+```
+
+More things you can say:
+
+| Say this | What happens |
+|---|---|
+| Add a global todo: tidy the README | Adds a todo without a date |
+| What is still open today? | Lists today's unfinished todos |
+| Rename "standup" to "project standup" and make it purple | Updates the todo text and color |
+| Make the "design review" note blue | Updates the note color |
+| Delete the note whose text is "test" | Finds it and removes it; if several match, the agent lists them first |
+
+Dates such as "today", "tomorrow" or "Friday" are resolved against the current date. If the item is ambiguous, the agent uses `keep_notes_list` to find its id first.
+
 ## Compatibility
 
 - DSH `^0.2.1-rc.5` (see `engines.dsh` in `package.json`).
