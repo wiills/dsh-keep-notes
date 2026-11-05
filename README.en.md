@@ -21,7 +21,7 @@ Keep-style notes, calendar-based todos and a GitHub-style activity heatmap, rend
 - **Mini month calendar**: shows the month, today and days with todos; click a day to jump there.
 - **Appearance settings**: background auto / black / white (black and white are fixed palettes that ignore the system theme), per-section background images for the header, todos and notes, and adjustable overlay strength.
 - **Theme and colors**: follows the DSH dark/light theme; notes and todos share yellow, green, blue, purple and red from the Microsoft To Do palette.
-- **Chinese and English UI**: follows the DSH language setting.
+- **Eight UI languages**: Chinese, English, Japanese, Spanish, French, German, Russian and Brazilian Portuguese follow the DSH language setting and switch live; other DSH languages fall back to English.
 - **Shared-folder sync**: click **Choose folder…** in settings and use the system folder picker to select a folder already synced by OneDrive, Dropbox or Syncthing. Todos and notes merge across DSH instances without a plugin cloud service; background images stay local.
 - **Agent integration**: agents can use the `keep_notes_*` tools to list, add, edit, complete and remove notes and todos; changes appear in the open panel.
 

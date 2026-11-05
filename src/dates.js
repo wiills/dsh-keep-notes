@@ -55,9 +55,20 @@
     }
 
     const dateFormatters = new Map();
+    /* Intl tag for each DSH locale id; unknown ids format as English. */
+    const DATE_LOCALES = {
+      zh: 'zh-CN',
+      en: 'en-US',
+      ja: 'ja-JP',
+      es: 'es-ES',
+      fr: 'fr-FR',
+      de: 'de-DE',
+      ru: 'ru-RU',
+      pt: 'pt-BR',
+    };
 
     function formatDate(lang, iso, options) {
-      const locale = lang === 'zh' ? 'zh-CN' : 'en-US';
+      const locale = DATE_LOCALES[lang] || DATE_LOCALES.en;
       const key = locale + '|' + JSON.stringify(options);
       let formatter = dateFormatters.get(key);
       if (!formatter) {

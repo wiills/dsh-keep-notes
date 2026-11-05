@@ -4,9 +4,14 @@
 
     const inject = ['slots', 'locale'];
 
+    /* Every language DSH ships gets a dictionary; the slot's `t` seat follows the
+       active locale and falls back to English for anything else. */
+    const DICTIONARIES = { zh: zh, en: en, ja: ja, es: es, fr: fr, de: de, ru: ru, pt: pt };
+
     function apply(ctx) {
-      ctx.effect(() => ctx.locale.register(NS, 'zh', zh), 'keep-notes: zh dictionary');
-      ctx.effect(() => ctx.locale.register(NS, 'en', en), 'keep-notes: en dictionary');
+      for (const id of Object.keys(DICTIONARIES)) {
+        ctx.effect(() => ctx.locale.register(NS, id, DICTIONARIES[id]), 'keep-notes: ' + id + ' dictionary');
+      }
       const t = ctx.locale.bind(NS);
       const board = createBoard(ctx.locale.getLocale().active);
       if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
