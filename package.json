@@ -39,6 +39,8 @@
     "./icon": "./icon.svg"
   },
   "files": [
+    "README.md",
+    "README.en.md",
     "index.js",
     "host-store.js",
     "host-sync.js",

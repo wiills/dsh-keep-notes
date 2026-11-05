@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/wiills/dsh-keep-notes/actions/workflows/ci.yml/badge.svg)](https://github.com/wiills/dsh-keep-notes/actions/workflows/ci.yml)
 
+**简体中文** | [English](README.en.md)
+
 Keep 风格的便签、按日历排布的待办清单，以及 GitHub 风格的活动热力图。整个功能独立占据 DSH 左侧栏的一个页面；同一份数据也通过 Host 工具开放给 agent 读写，并可选通过共享文件夹在多台设备间同步。
 
 **安装**：DSH → Plugins → 安装对话框，粘贴 `git+https://github.com/wiills/dsh-keep-notes.git#v1.3.1`，装好后刷新页面。
@@ -54,6 +56,16 @@ git+https://github.com/wiills/dsh-keep-notes.git#v1.3.1
 
 索引里的版本同样指向 GitHub 上的提交，不依赖 npm；npm 可访问后会再补 npm 源。
 
+## 升级
+
+DSH 不会自动更新已经安装的插件。安装时会锁定一个 tag 或 commit，发布新版本后需要手动更新：
+
+1. 在 **Plugins** 里重新安装最新版本，例如 `git+https://github.com/wiills/dsh-keep-notes.git#v1.3.1`；如果插件页有「更新 / 重新安装」入口，也可以直接点；
+2. 或者从插件市场刷新索引，再安装最新版本；
+3. 装好后刷新页面。
+
+从 `#v1.3.0` 升到 1.3.1 只需要重新安装，数据不会丢：待办和便签在 `~/.dsh/keep-notes/board.json`，面板缓存和背景图在浏览器 `localStorage`，都不在插件包目录里。用 `link:` 方式做本地开发时，重新加载插件即可生效，不需要重装。
+
 ## 使用
 
 - **7 天 / 月视图**：标题栏工具行切换；回到今天点迷你月历里的今天，或便签区右侧的「今天」。
@@ -77,7 +89,7 @@ git+https://github.com/wiills/dsh-keep-notes.git#v1.3.1
 ### 共享文件夹同步的限制
 
 - 依赖系统的 OneDrive / Dropbox / iCloud / Syncthing 客户端，插件本身不建立连接，也不保存网盘凭据。
-- 每台设备单独填写本机路径；同一个共享目录里的文件由网盘复制，通常有几秒到几分钟延迟。
+- 每台设备单独选择本机路径；同一个共享目录里的文件由网盘复制，通常有几秒到几分钟延迟。
 - 两个设备同时改同一条内容时，按修改时间较新的版本合并；删除使用墓碑，避免离线设备把已删条目带回来。极端情况下网盘自己生成“冲突副本”时，需要手动处理该副本。
 - 只同步待办、便签和固定便签；外观、背景图、面板设置仍留在各设备。
 
@@ -136,22 +148,3 @@ npm run validate:index # 校验 docs/index.json（需先 npm install）
 ## License
 
 MIT © 2026 wiills
-
----
-
-## English
-
-Keep-style notes, calendar-based todos and a GitHub-style activity heatmap, rendered as a standalone DSH sidebar page. The same board is exposed to the agent through Host tools and can optionally sync across devices through a shared folder.
-
-- Todos laid out per calendar day: a 7-day view by default, expandable to a full month; today's column is wider and highlighted.
-- A global todo column pinned to the left, independent of the selected date.
-- Calendar notes follow the selected day, global notes stay put, and a fixed note rail sits on the far right.
-- Background mode auto / black / white (black and white ignore the app theme), plus per-section background images.
-- GitHub-style 16 × 7 activity heatmap and a mini month calendar.
-- Follows the DSH dark/light theme, with an optional fixed black or white background; five note and todo colors from the Microsoft To Do palette; zh/en UI.
-- Optional shared-folder sync: click **Choose folder…** in the panel settings and use the system folder picker to select a folder already replicated by OneDrive, Dropbox or Syncthing; todos and notes merge across devices without a plugin cloud service. Background images stay local.
-- Agent tools (`keep_notes_*`) can list, add, edit, complete and remove items; panel changes appear in the same board.
-
-Install directly with `git+https://github.com/wiills/dsh-keep-notes.git#v1.3.1` in the Plugins install dialog, or add the index `https://wiills.github.io/dsh-keep-notes/index.json` under **Plugins → Discover → Index sources**. npm publishing is pending.
-
-The Host keeps the shared board at `DSH_HOME/keep-notes/board.json` (usually `~/.dsh/keep-notes/board.json`). The panel keeps a localStorage cache and syncs through the same-origin `/dsh-keep-notes/*` API, which requires an authenticated DSH Web session; unauthenticated requests get 401. No external network requests or telemetry. Images stay in localStorage and are never sent to the Host or returned by agent tools. With shared-folder sync enabled, the Host writes todos and notes (not images) to `dsh-keep-notes.board.json` inside the folder the user chooses; that file is visible to the selected sync provider.
