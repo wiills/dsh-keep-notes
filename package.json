@@ -17,11 +17,17 @@
     "dsh-plugin",
     "notes",
     "todo",
+    "to-do",
+    "todo-notes",
+    "tasks",
+    "memo",
+    "sticky-notes",
     "calendar",
     "heatmap",
     "agent",
     "tools",
     "sync",
+    "multilingual",
     "keep"
   ],
   "engines": {
